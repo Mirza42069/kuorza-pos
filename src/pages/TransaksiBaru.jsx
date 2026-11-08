@@ -517,7 +517,7 @@ export default function TransaksiBaru() {
             </header>
 
             <h2 className="transaksi-section-label">Layanan</h2>
-            <ServicePicker services={services} selectedItems={selectedItems} onAdd={addService} />
+            <ServicePicker services={services} selectedItems={selectedItems} onAdd={addService} worker />
 
             <h2 className="transaksi-section-label">Barang</h2>
             <ShelfItemPicker

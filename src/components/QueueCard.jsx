@@ -92,7 +92,22 @@ export function QueueCard({ treatment, statusLabel, hasPhoto, busy, onUploaded, 
               {ticketLabel(treatment)}
             </span>
           </div>
-          <span className={`status-badge status-${treatment.status}`}>{statusLabel}</span>
+          {/* Status, payment and overdue all stack in one right-hand column:
+              side by side they fought the heading for width and wrapped
+              unpredictably on a phone. */}
+          <div className="queue-card-badges">
+            <span className={`status-badge status-${treatment.status}`}>{statusLabel}</span>
+            <span
+              className={`status-badge ${
+                treatment.isPaymentVerified ? 'status-closed' : treatment.isPaid ? 'status-diproses' : 'status-created'
+              }`}
+            >
+              {treatment.isPaymentVerified ? 'Lunas' : treatment.isPaid ? 'Bukti Bayar Belum Ada' : 'Belum Dibayar'}
+            </span>
+            {overdue && (
+              <span className="overdue-badge">⚠️ {daysOpen(treatment.created_at)} hari</span>
+            )}
+          </div>
         </div>
 
         {/* The code never leads, but it never disappears either: it's what the
@@ -112,19 +127,6 @@ export function QueueCard({ treatment, statusLabel, hasPhoto, busy, onUploaded, 
         <div className="queue-card-meta">
           {treatment.pic && <span>{treatment.pic}</span>}
           <span>{formatDateTime(treatment.created_at)}</span>
-        </div>
-
-        <div className="queue-card-tags">
-          <span
-            className={`status-badge ${
-              treatment.isPaymentVerified ? 'status-closed' : treatment.isPaid ? 'status-diproses' : 'status-created'
-            }`}
-          >
-            {treatment.isPaymentVerified ? 'Lunas' : treatment.isPaid ? 'Bukti Bayar Belum Ada' : 'Belum Dibayar'}
-          </span>
-          {overdue && (
-            <span className="overdue-badge">⚠️ {daysOpen(treatment.created_at)} hari</span>
-          )}
         </div>
       </div>
 
