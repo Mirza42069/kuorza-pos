@@ -9,7 +9,7 @@ import {
 } from '../api'
 import { formatRupiah } from '../lib/format'
 import { todayDateInput } from '../lib/dateRange'
-import { useLanguage } from '../context/useLanguage'
+import { groupServicesByCategory } from '../lib/serviceCategories'
 
 // Supervisor/admin only (see SupervisorRoute in App.jsx). Two things:
 //   - Upah per Layanan: a fixed rupiah amount each service pays out (e.g.
@@ -79,6 +79,19 @@ export default function KelolaUpah() {
 function ServiceWageSection({ services, rates, loading, onChanged, onError }) {
   const { t } = useLanguage()
   const wageByService = new Map(rates.map((r) => [r.service_id, Number(r.wage_amount)]))
+  const groups = groupServicesByCategory(services)
+  // Every category starts closed. Several can be open at once, and they stay
+  // open across saves — this component isn't remounted when rates reload.
+  const [openKeys, setOpenKeys] = useState(() => new Set())
+
+  function toggleGroup(key) {
+    setOpenKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
   return (
     <section className="staf-section">
@@ -93,25 +106,49 @@ function ServiceWageSection({ services, rates, loading, onChanged, onError }) {
       {loading && <p className="riwayat-loading">{t('Memuat...')}</p>}
       {!loading && services.length === 0 && <p className="riwayat-empty">{t('Belum ada layanan')}</p>}
       {!loading && services.length > 0 && (
-        <div className="riwayat-table upah-rate-table">
-          <div className="riwayat-table-row riwayat-table-head">
-            <span>{t('Layanan')}</span>
-            <span>{t('Upah')}</span>
-            <span></span>
-          </div>
-          {services.map((service) => {
-            const currentWage = wageByService.get(service.id) ?? 0
+        <div className="service-category-list">
+          {groups.map((group) => {
+            const isOpen = openKeys.has(group.key)
+            const panelId = `upah-category-${group.key}`
             return (
-              // Keyed on the wage too, not just the service — remounts the
-              // row (resetting its local input) whenever the saved value
-              // changes, instead of syncing it back with an effect.
-              <ServiceWageRow
-                key={`${service.id}:${currentWage}`}
-                service={service}
-                currentWage={currentWage}
-                onChanged={onChanged}
-                onError={onError}
-              />
+              <div key={group.key} className={`service-category ${isOpen ? 'open' : ''}`}>
+                <button
+                  type="button"
+                  className="service-category-header"
+                  aria-expanded={isOpen}
+                  aria-controls={panelId}
+                  onClick={() => toggleGroup(group.key)}
+                >
+                  <span className="service-category-label">{group.label}</span>
+                  <span className="service-category-meta">{group.services.length} layanan</span>
+                  <span className="service-category-chevron" aria-hidden="true" />
+                </button>
+
+                {isOpen && (
+                  <div id={panelId} className="riwayat-table upah-rate-table katalog-category-panel">
+                    <div className="riwayat-table-row riwayat-table-head">
+                      <span>Layanan</span>
+                      <span>Upah</span>
+                      <span></span>
+                    </div>
+                    {group.services.map((service) => {
+                      const currentWage = wageByService.get(service.id) ?? 0
+                      return (
+                        // Keyed on the wage too, not just the service — remounts the
+                        // row (resetting its local input) whenever the saved value
+                        // changes, instead of syncing it back with an effect.
+                        <ServiceWageRow
+                          key={`${service.id}:${currentWage}`}
+                          service={service}
+                          currentWage={currentWage}
+                          onChanged={onChanged}
+                          onError={onError}
+                        />
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             )
           })}
         </div>

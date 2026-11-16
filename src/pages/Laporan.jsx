@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { getLast7DaysRevenue, getTodayPaymentBreakdown, getWorkerOrderCounts } from '../api'
+import {
+  getLast7DaysRevenue,
+  getTodayPaymentBreakdown,
+  getWorkerOrderCounts,
+  getPopularServices,
+} from '../api'
 import { formatRupiah, initials } from '../lib/format'
 import { getPeriodRange, formatPeriodLabel } from '../lib/dateRange'
 import { useAuth } from '../context/useAuth'
@@ -38,6 +43,26 @@ export default function Laporan() {
   // have no control to change it) is redundant here, but this keeps the
   // fetch pinned to daily even if that ever changes.
   const effectiveWorkerPeriod = isAdmin ? workerPeriod : 'daily'
+  // Same rule as the worker leaderboard: admins pick a period, everyone
+  // else is pinned to today.
+  const [servicePeriod, setServicePeriod] = useState('daily')
+  const [popularServices, setPopularServices] = useState([])
+  const [servicesLoading, setServicesLoading] = useState(true)
+  const effectiveServicePeriod = isAdmin ? servicePeriod : 'daily'
+
+  useEffect(() => {
+    const { start, end } = getPeriodRange(effectiveServicePeriod)
+    getPopularServices(start, end)
+      .then(setPopularServices)
+      .catch(() => setError('Gagal memuat layanan terpopuler'))
+      .finally(() => setServicesLoading(false))
+  }, [effectiveServicePeriod])
+
+  const topServices = useMemo(() => {
+    const top = popularServices.slice(0, 5)
+    const max = Math.max(1, ...top.map((s) => s.quantity))
+    return top.map((s) => ({ ...s, widthPct: Math.round((s.quantity / max) * 100) }))
+  }, [popularServices])
 
   useEffect(() => {
     // Staff only get today's numbers — the 7-day trend is history, admin-only.
@@ -170,6 +195,48 @@ export default function Laporan() {
             ))}
           </div>
         </div>
+      </div>
+
+      <div className="laporan-panel laporan-services">
+        <div className="laporan-panel-header">
+          <div>
+            <div className="laporan-panel-title">Layanan Terpopuler</div>
+            <p className="laporan-panel-subtitle">{formatPeriodLabel(effectiveServicePeriod)}</p>
+          </div>
+          {isAdmin && (
+            <select value={servicePeriod} onChange={(e) => setServicePeriod(e.target.value)}>
+              {WORKER_PERIOD_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {servicesLoading && <p className="riwayat-loading">Memuat...</p>}
+        {!servicesLoading && topServices.length === 0 && (
+          <p className="riwayat-empty">Belum ada layanan terjual pada periode ini</p>
+        )}
+        {!servicesLoading && topServices.length > 0 && (
+          <div className="popular-services">
+            {topServices.map((s, i) => (
+              <div key={s.name} className={`popular-service-row ${i === 0 ? 'is-top' : ''}`}>
+                <span className="popular-service-rank">{i + 1}</span>
+                <div className="popular-service-info">
+                  <div className="popular-service-head">
+                    <span className="popular-service-name">{s.name}</span>
+                    <span className="popular-service-count">{s.quantity}×</span>
+                  </div>
+                  <div className="popular-service-track">
+                    <div className="popular-service-fill" style={{ width: `${s.widthPct}%` }} />
+                  </div>
+                  <span className="popular-service-revenue">{formatRupiah(s.revenue)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="laporan-panel laporan-workers">

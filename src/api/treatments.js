@@ -402,14 +402,66 @@ export async function getTodayPaymentBreakdown() {
   return data
 }
 
+// Columns the Riwayat search box matches against: plate, treatment code,
+// vehicle brand (treatment_type), customer name, and the staff names.
+const SEARCH_COLUMNS = ['plate_number', 'treatment_code', 'treatment_type', 'customer_name', 'pic', 'wash_staff', 'qc_staff']
+
+// Prefixes the search box understands, e.g. "staff:budi merek:cbr". Each maps
+// to the columns it narrows to; several names per key are just aliases.
+const SEARCH_PREFIXES = {
+  staff: ['pic', 'wash_staff', 'qc_staff'],
+  pic: ['pic'],
+  cuci: ['wash_staff'],
+  qc: ['qc_staff'],
+  merek: ['treatment_type'],
+  plat: ['plate_number'],
+  kode: ['treatment_code'],
+  nama: ['customer_name'],
+  pelanggan: ['customer_name'],
+}
+
+// Strip characters that are syntax in a PostgREST or() filter (commas,
+// parens) or wildcards in ilike, so typed text can't break the filter.
+function sanitizeSearchTerm(text) {
+  return text.replace(/[,()%*\\"]/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+// Splits "staff:budi merek:cbr vario" into prefixed filters plus leftover
+// free text. A value with spaces can be quoted: nama:"budi santoso". An
+// unknown prefix (e.g. "jam:10") stays in the free text, matched literally.
+export function parseSearchQuery(query) {
+  const filters = []
+  const free = query.replace(/(\w+):(?:"([^"]*)"|(\S+))/g, (match, key, quoted, bare) => {
+    const columns = SEARCH_PREFIXES[key.toLowerCase()]
+    const value = sanitizeSearchTerm(quoted ?? bare)
+    if (!columns || !value) return match
+    filters.push({ columns, value })
+    return ' '
+  })
+  return { filters, text: sanitizeSearchTerm(free) }
+}
+
+function ilikeAny(columns, value) {
+  return columns.map((col) => `${col}.ilike.%${value}%`).join(',')
+}
+
 // todayOnly restricts results to today's rows — staff can only search within
 // today's queue, while admins can search the full transaction history.
-export async function searchTreatmentsByPlate(query, { todayOnly = false } = {}) {
+// Free text matches any SEARCH_COLUMNS; each prefixed filter must also match
+// (filters are ANDed together, so "staff:budi merek:cbr" needs both).
+export async function searchTreatments(query, { todayOnly = false } = {}) {
+  const { filters, text } = parseSearchQuery(query)
+  if (!text && filters.length === 0) return []
+
   let request = supabase
     .from('treatments')
     .select(LIST_SELECT)
-    .ilike('plate_number', `%${query.toUpperCase().trim()}%`)
     .order('created_at', { ascending: false })
+
+  if (text) request = request.or(ilikeAny(SEARCH_COLUMNS, text))
+  for (const { columns, value } of filters) {
+    request = request.or(ilikeAny(columns, value))
+  }
 
   if (todayOnly) {
     const startOfDay = new Date()
@@ -453,6 +505,34 @@ export async function getWorkerOrderCounts(start, end) {
   return Array.from(counts.values())
     .map((w) => ({ ...w, total: w.washCount + w.qcCount }))
     .sort((a, b) => b.total - a.total)
+}
+
+// Service lines sold in [start, end), tallied by name and ranked by quantity.
+// Shelf items are excluded — this is about which service people pick, not
+// what goes off the shelf. Grouped by the snapshot name, so each size
+// ("Motor Basic Wash - S" vs "- M") ranks separately.
+export async function getPopularServices(start, end) {
+  const { data, error } = await supabase
+    .from('treatment_items')
+    .select('service_name, quantity, subtotal, treatments!inner(created_at, status)')
+    .is('shelf_item_id', null)
+    .gte('treatments.created_at', start.toISOString())
+    .lt('treatments.created_at', end.toISOString())
+    .neq('treatments.status', 'voided')
+  if (error) throw error
+
+  const tally = new Map()
+  for (const item of data) {
+    const name = item.service_name
+    if (!tally.has(name)) tally.set(name, { name, quantity: 0, revenue: 0 })
+    const entry = tally.get(name)
+    entry.quantity += Number(item.quantity || 0)
+    entry.revenue += Number(item.subtotal || 0)
+  }
+
+  return Array.from(tally.values()).sort(
+    (a, b) => b.quantity - a.quantity || b.revenue - a.revenue,
+  )
 }
 
 export async function getTreatmentDetail(id) {

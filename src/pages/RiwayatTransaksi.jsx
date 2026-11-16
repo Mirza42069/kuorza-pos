@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { searchTreatmentsByPlate, getTreatmentsInRange, getWashProofPhoto, getWashProofSignedUrl } from '../api'
+import { searchTreatments, getTreatmentsInRange, getWashProofPhoto, getWashProofSignedUrl } from '../api'
 import { parseStaffNames } from '../lib/staffNames'
 import { formatRupiah, formatDateTime } from '../lib/format'
 import { getPeriodRange, formatPeriodLabel } from '../lib/dateRange'
@@ -160,7 +160,7 @@ export default function RiwayatTransaksi() {
     setLoading(true)
     setError('')
     try {
-      const results = await searchTreatmentsByPlate(query, { todayOnly: !isAdmin })
+      const results = await searchTreatments(query, { todayOnly: !isAdmin })
       setTreatments(results)
       setIsFiltered(true)
     } catch {
@@ -171,7 +171,7 @@ export default function RiwayatTransaksi() {
   }
 
   // Both exports pull the whole period fresh rather than reusing the rows on
-  // screen, so the plate search and payment filter don't leak into the file.
+  // screen, so the search and payment filter don't leak into the file.
   async function handleExport(format) {
     setExporting(format)
     setError('')
@@ -198,7 +198,7 @@ export default function RiwayatTransaksi() {
   }
 
   // The payment filter is applied client-side on the rows already loaded, so
-  // it composes with both the period picker and the plate search. A ticket
+  // it composes with both the period picker and the search. A ticket
   // matches a method if any of its payments used it; 'unpaid' has none.
   const visibleTreatments = useMemo(() => {
     if (paymentFilter === 'all') return treatments
@@ -227,7 +227,8 @@ export default function RiwayatTransaksi() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={t('Cari nomor plat...')}
+            placeholder="Cari plat, kode, nama, merek... (staff:budi merek:cbr)"
+            title="Filter: staff:, merek:, plat:, kode:, nama:, cuci:, qc:, pic: — pakai tanda kutip untuk spasi, mis. nama:&quot;budi santoso&quot;"
           />
           <select
             value={paymentFilter}

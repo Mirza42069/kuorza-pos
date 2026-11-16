@@ -2307,6 +2307,92 @@ body.service-menu-open .worker-content {
   margin-top: 20px;
 }
 
+.laporan-services {
+  margin-top: 20px;
+}
+
+.popular-services {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.popular-service-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.popular-service-rank {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--pos-bg);
+  color: var(--pos-text-muted);
+}
+
+.popular-service-row.is-top .popular-service-rank {
+  background: var(--pos-blue);
+  color: #fff;
+}
+
+.popular-service-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.popular-service-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.popular-service-name {
+  font-weight: 600;
+  color: var(--pos-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.popular-service-count {
+  flex: none;
+  font-weight: 700;
+  color: var(--pos-blue);
+}
+
+.popular-service-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--pos-bg);
+  overflow: hidden;
+}
+
+.popular-service-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: #c9d8e6;
+}
+
+.popular-service-row.is-top .popular-service-fill {
+  background: var(--pos-blue);
+}
+
+.popular-service-revenue {
+  font-size: 11.5px;
+  color: var(--pos-text-faint);
+}
+
 .laporan-panel-header {
   display: flex;
   align-items: flex-start;
