@@ -485,3 +485,29 @@ All SQL migrations have been run against the Supabase project in order:
   `proof_url` (camera photo of the payment screen, uploaded via the
   `upload-wash-proof` Edge Function with `kind=payment`). Cash needs no
   photo. Mirrors `isPaymentVerified()` in `src/api/treatments.js`
+- 014_require_active_user — RLS now requires an **active** profile, not
+  just a session: new `is_active_user()` helper replaces every `true` policy
+  on treatments/treatment_items/payments/treatment_logs/photos/services/
+  shelf_items and the foto_kendaraan storage policies; `is_admin()` and
+  `is_supervisor()` also require `is_active`. A deactivated user's still-valid
+  JWT gets nothing on the next request. Exception: "users can read own
+  profile" stays ungated so `login()` can see `is_active = false`.
+  `active_staff_names` and `treatment_summary` (owner-privilege views, which
+  bypass RLS) got a `WHERE is_active_user()` and are now SELECT-only —
+  `active_staff_names` was auto-updatable, letting any signed-in user rename
+  or delete any profile through it. Revoked all `anon` table grants and
+  dropped the dashboard-template anon upload policies on foto_kendaraan.
+  014b revoked anon EXECUTE on the helper/RPC functions. Rule going forward:
+  every new policy, view, SECURITY DEFINER RPC and Edge Function must check
+  `is_active_user()` / `is_active`, never just "authenticated"
+- 015_logout_on_deactivate — `profiles_end_sessions_on_deactivate` trigger:
+  when `is_active` goes true→false it deletes that user's `auth.sessions`
+  (cascading to refresh tokens), so their next token refresh fails. Not a
+  ban — the Auth user is untouched and reactivating needs nothing else.
+  Client side, `AuthContext` re-reads the profile every 60s, on tab focus,
+  and on session restore, and signs out with "Akun tidak aktif — hubungi
+  admin" on Login when `is_active` is false
+- 016_enable_realtime_queue — added `treatments`, `payments`, `photos` to the
+  `supabase_realtime` publication so the Antrian queue updates live across
+  signed-in users (`subscribeToQueueChanges()` in `src/api/treatments.js`).
+  Realtime enforces each table's SELECT RLS (authenticated-only)

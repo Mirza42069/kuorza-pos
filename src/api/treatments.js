@@ -374,6 +374,23 @@ export async function getActiveQueue() {
   return data.map(mapTreatmentRow)
 }
 
+// Live queue: calls onChange whenever a row the queue is built from changes
+// (tickets, payments, wash/payment proof photos), from any signed-in user.
+// These tables are in the supabase_realtime publication (migration 014), and
+// Realtime applies each table's SELECT RLS. The payload isn't passed on —
+// callers refetch, since one action can touch several tables and a status
+// change can move a ticket out of the queue. Returns an unsubscribe function.
+export function subscribeToQueueChanges(onChange) {
+  const channel = supabase.channel(`queue-${Math.random().toString(36).slice(2)}`)
+  for (const table of ['treatments', 'payments', 'photos']) {
+    channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => onChange())
+  }
+  channel.subscribe()
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+
 // Revenue is money actually collected, so this reads from payments
 // (by paid_at) rather than treatment totals — a queued-but-unpaid treatment
 // shouldn't show up as revenue.

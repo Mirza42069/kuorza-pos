@@ -53,10 +53,12 @@ Deno.serve(async (req) => {
 
   const { data: callerProfile, error: callerProfileError } = await admin
     .from('profiles')
-    .select('role')
+    .select('role, is_active')
     .eq('id', callerUser.user.id)
     .single()
-  if (callerProfileError || callerProfile?.role !== 'admin') {
+  // A deactivated admin's JWT stays valid until it expires, so is_active has
+  // to be checked here too — same rule as is_admin() in RLS (migration 014).
+  if (callerProfileError || callerProfile?.role !== 'admin' || !callerProfile?.is_active) {
     return json({ error: 'Hanya admin yang dapat menambah pekerja.' }, 403)
   }
 

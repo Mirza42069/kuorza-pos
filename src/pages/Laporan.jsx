@@ -10,7 +10,7 @@ import { getPeriodRange, formatPeriodLabel } from '../lib/dateRange'
 import { useAuth } from '../context/useAuth'
 import { isAdmin as checkIsAdmin } from '../lib/roles'
 import { useLanguage } from '../context/useLanguage'
-import { dateLocale } from '../lib/i18n'
+import { dateLocale, translateServiceName } from '../lib/i18n'
 
 const PAYMENT_LABELS = { cash: 'Tunai', qris: 'QRIS', transfer: 'Transfer' }
 const PAYMENT_COLORS = { cash: '#2c6a9e', qris: '#7bb2d9', transfer: '#dce9f3' }
@@ -95,7 +95,7 @@ export default function Laporan() {
   const stats = useMemo(() => {
     const revenue = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0)
     const count = payments.length
-    return { revenue, count, avg: count ? revenue / count : 0 }
+    return { revenue, count, avg: count ? Math.round(revenue / count) : 0 }
   }, [payments])
 
   const revBars = useMemo(() => {
@@ -200,23 +200,23 @@ export default function Laporan() {
       <div className="laporan-panel laporan-services">
         <div className="laporan-panel-header">
           <div>
-            <div className="laporan-panel-title">Layanan Terpopuler</div>
+            <div className="laporan-panel-title">{t('Layanan Terpopuler')}</div>
             <p className="laporan-panel-subtitle">{formatPeriodLabel(effectiveServicePeriod)}</p>
           </div>
           {isAdmin && (
             <select value={servicePeriod} onChange={(e) => setServicePeriod(e.target.value)}>
               {WORKER_PERIOD_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
-                  {opt.label}
+                  {t(opt.label)}
                 </option>
               ))}
             </select>
           )}
         </div>
 
-        {servicesLoading && <p className="riwayat-loading">Memuat...</p>}
+        {servicesLoading && <p className="riwayat-loading">{t('Memuat...')}</p>}
         {!servicesLoading && topServices.length === 0 && (
-          <p className="riwayat-empty">Belum ada layanan terjual pada periode ini</p>
+          <p className="riwayat-empty">{t('Belum ada layanan terjual pada periode ini')}</p>
         )}
         {!servicesLoading && topServices.length > 0 && (
           <div className="popular-services">
@@ -225,7 +225,7 @@ export default function Laporan() {
                 <span className="popular-service-rank">{i + 1}</span>
                 <div className="popular-service-info">
                   <div className="popular-service-head">
-                    <span className="popular-service-name">{s.name}</span>
+                    <span className="popular-service-name">{translateServiceName(s.name, language)}</span>
                     <span className="popular-service-count">{s.quantity}×</span>
                   </div>
                   <div className="popular-service-track">

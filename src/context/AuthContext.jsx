@@ -11,6 +11,20 @@ import { AuthContext } from './auth-context'
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000
 const IDLE_LOGOUT_FLAG = 'nd_idle_logout'
 
+// How often a signed-in tab re-reads its own profile to notice it was
+// deactivated. RLS (migration 014) already blocks a deactivated user's data
+// access on the very next request, and migration 015 deletes their Auth
+// sessions so the next token refresh fails — this just gets them off the
+// screen promptly instead of leaving them on empty pages until the access
+// token expires (up to an hour).
+const ACTIVE_CHECK_MS = 60 * 1000
+const DEACTIVATED_LOGOUT_FLAG = 'nd_deactivated_logout'
+
+function signOutDeactivated() {
+  sessionStorage.setItem(DEACTIVATED_LOGOUT_FLAG, '1')
+  return supabase.auth.signOut()
+}
+
 export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -23,6 +37,13 @@ export function AuthProvider({ children }) {
     async function loadProfile() {
       try {
         const current = await getCurrentProfile()
+        // A restored session (page reload, new tab) never went through
+        // login()'s is_active check, so apply it here too.
+        if (current && !current.is_active) {
+          if (mounted) setProfile(null)
+          await signOutDeactivated()
+          return
+        }
         if (mounted) setProfile(current)
       } finally {
         if (mounted) setLoading(false)
@@ -40,6 +61,38 @@ export function AuthProvider({ children }) {
       data.subscription.unsubscribe()
     }
   }, [])
+
+  // Deactivation check while signed in: on an interval and whenever the tab
+  // comes back into view. Transient errors (offline) are ignored — the next
+  // tick retries, and RLS is what actually enforces access anyway.
+  useEffect(() => {
+    if (!profile) return
+    let cancelled = false
+
+    async function checkStillActive() {
+      try {
+        const current = await getCurrentProfile()
+        if (!cancelled && current && !current.is_active) {
+          setProfile(null)
+          await signOutDeactivated()
+        }
+      } catch {
+        // ignore — retry on next tick
+      }
+    }
+
+    function handleVisible() {
+      if (!document.hidden) checkStillActive()
+    }
+
+    const interval = setInterval(checkStillActive, ACTIVE_CHECK_MS)
+    document.addEventListener('visibilitychange', handleVisible)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisible)
+    }
+  }, [profile])
 
   // Idle/away auto-logout. Only runs while someone is actually signed in —
   // there's nothing to protect on the login screen itself.

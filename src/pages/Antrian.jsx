@@ -9,6 +9,7 @@ import {
   closeTreatment,
   recordVerifiedPayment,
   uploadPaymentProofPhoto,
+  subscribeToQueueChanges,
 } from '../api'
 import { formatRupiah, formatDateTime, ticketLabel } from '../lib/format'
 import { WashProofButton } from '../components/WashProofButton'
@@ -67,6 +68,23 @@ export default function Antrian() {
 
   useEffect(() => {
     loadQueue().finally(() => setLoading(false))
+  }, [loadQueue])
+
+  // Live updates from other users. Creating one ticket fires several inserts
+  // (treatment, items, payment) in quick succession, so changes are debounced
+  // into a single refetch.
+  useEffect(() => {
+    let timer
+    const unsubscribe = subscribeToQueueChanges(() => {
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        loadQueue()
+      }, 300)
+    })
+    return () => {
+      clearTimeout(timer)
+      unsubscribe()
+    }
   }, [loadQueue])
 
   // Refetch rather than patch the row in place: 'closed' drops a ticket out

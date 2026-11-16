@@ -7,6 +7,7 @@ import { useLanguage } from '../context/useLanguage'
 import { LanguageToggle } from '../components/LanguageToggle'
 
 const IDLE_LOGOUT_FLAG = 'nd_idle_logout'
+const DEACTIVATED_LOGOUT_FLAG = 'nd_deactivated_logout'
 
 // Username + PIN, both typed. The old name-picker listed every active person
 // before anyone had signed in, which both advertised the roster publicly and
@@ -14,7 +15,15 @@ const IDLE_LOGOUT_FLAG = 'nd_idle_logout'
 export default function Login() {
   const [username, setUsername] = useState('')
   const [pin, setPin] = useState('')
-  const [error, setError] = useState('')
+  // Set by AuthContext when it signs out a session whose profile was
+  // deactivated mid-shift.
+  const [error, setError] = useState(() => {
+    if (sessionStorage.getItem(DEACTIVATED_LOGOUT_FLAG)) {
+      sessionStorage.removeItem(DEACTIVATED_LOGOUT_FLAG)
+      return 'Akun tidak aktif — hubungi admin'
+    }
+    return ''
+  })
   const [info, setInfo] = useState(() => {
     // Set by AuthContext's idle/away timeout right before it signs out, so
     // this only fires immediately after that redirect, not on every visit.
