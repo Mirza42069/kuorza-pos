@@ -10,6 +10,7 @@ import {
 import { formatRupiah } from '../lib/format'
 import { todayDateInput } from '../lib/dateRange'
 import { groupServicesByCategory } from '../lib/serviceCategories'
+import { useLanguage } from '../context/useLanguage'
 
 // Supervisor/admin only (see SupervisorRoute in App.jsx). Two things:
 //   - Upah per Layanan: a fixed rupiah amount each service pays out (e.g.

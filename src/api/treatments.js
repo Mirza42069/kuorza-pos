@@ -149,7 +149,7 @@ export async function createTreatment({
 
 // Settle payment on a treatment that was queued without paying up front.
 // If work hasn't started yet (still 'created'), this also advances status to
-// 'paid'. If work is further along (e.g. 'diproses' or 'qc'), the status is
+// 'paid'. If work is further along (e.g. 'diproses' or 'selesai'), the status is
 // left alone — payment and work progress are independent once the job is
 // moving — and a plain log entry records that payment came in.
 export async function recordPayment(treatmentId, { amount, paymentMethod }) {
@@ -192,11 +192,15 @@ export async function recordVerifiedPayment(treatmentId, { amount, paymentMethod
   if (proofFile) await uploadPaymentProofPhoto(treatmentId, proofFile)
 }
 
-// Work pipeline: created/paid -> diproses -> qc -> selesai -> closed.
-// Any staff can move a treatment through these three stages; the wash-proof
-// photo is required to enter 'qc' (enforced by the caller before invoking
-// sendToQC). Reaching 'selesai' requires at least one wash worker and a QC
-// worker on the ticket — markSelesai checks that itself, see below.
+// Work pipeline: created/paid -> diproses -> selesai -> closed.
+// There used to be a separate 'qc' stage between diproses and selesai; it was
+// dropped as a required step — but a QC person still has to be named on the
+// ticket before it can finish. A few old rows may still sit in 'qc' — they finish with
+// markSelesai like a 'diproses' ticket does.
+// Any staff can move a treatment through these stages; the wash-proof photo
+// is required to finish (enforced by the caller before invoking markSelesai),
+// and so are at least one wash worker and a QC worker — markSelesai checks
+// that itself.
 //
 // washStaffNames is optional: when given, the wash crew is saved in the same
 // update that starts the job, so a ticket can't end up 'diproses' with the
@@ -210,15 +214,6 @@ export async function startProcessing(id, washStaffNames) {
   if (error) throw error
   if (washStaff) await logAction(id, `wash staff assigned: ${washStaff}`)
   await logStatusChange(id, 'diproses')
-}
-
-export async function sendToQC(id) {
-  const { error } = await supabase
-    .from('treatments')
-    .update({ status: 'qc', updated_at: new Date().toISOString() })
-    .eq('id', id)
-  if (error) throw error
-  await logStatusChange(id, 'qc')
 }
 
 export async function markSelesai(id) {
@@ -301,7 +296,20 @@ export async function closeTreatment(id) {
   await logStatusChange(id, 'closed')
 }
 
+// A ticket that has any payment recorded can't be cancelled — the money is
+// already in, so it has to go through to close. The screens disable the
+// button; this re-reads so a stale screen can't void a ticket paid elsewhere.
 export async function voidTreatment(id) {
+  const { data: payments, error: readError } = await supabase
+    .from('payments')
+    .select('id')
+    .eq('treatment_id', id)
+    .limit(1)
+  if (readError) throw readError
+  if (payments?.length) {
+    throw new Error('Transaksi yang sudah dibayar tidak bisa dibatalkan')
+  }
+
   const { error } = await supabase
     .from('treatments')
     .update({ status: 'voided', updated_at: new Date().toISOString() })

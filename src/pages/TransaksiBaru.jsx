@@ -223,43 +223,46 @@ function StaffFields({ washStaff, setWashStaff, qcStaff, setQcStaff }) {
   )
 }
 
-function DiscountFields({
-  discountType,
-  setDiscountType,
-  discountInput,
-  setDiscountInput,
-}) {
-  const { t } = useLanguage()
-  return (
-    <div className="ticket-discount">
-      <label>
-        {t('Diskon')}
-        <select
-          value={discountType}
-          onChange={(e) => {
-            // A number typed as a percentage means something completely
-            // different in Rupiah, so don't carry it across.
-            setDiscountType(e.target.value)
-            setDiscountInput('')
-          }}
-        >
-          <option value="percent">{t('Persentase (%)')}</option>
-          <option value="nominal">{t('Nominal (Rp)')}</option>
-        </select>
-      </label>
-      <input
-        type="number"
-        min="0"
-        max={discountType === 'percent' ? 100 : undefined}
-        inputMode="numeric"
-        value={discountInput}
-        onChange={(e) => setDiscountInput(e.target.value)}
-        placeholder={discountType === 'percent' ? t('Contoh: 10') : t('Contoh: 20000')}
-        aria-label={discountType === 'percent' ? t('Diskon dalam persen') : t('Diskon dalam Rupiah')}
-      />
-    </div>
-  )
-}
+// Custom discount input — disabled: new tickets no longer take a manual
+// discount (the promo/harga normal toggle is the only price reduction).
+// Kept commented out in case it's wanted back.
+// function DiscountFields({
+//   discountType,
+//   setDiscountType,
+//   discountInput,
+//   setDiscountInput,
+// }) {
+//   const { t } = useLanguage()
+//   return (
+//     <div className="ticket-discount">
+//       <label>
+//         {t('Diskon')}
+//         <select
+//           value={discountType}
+//           onChange={(e) => {
+//             // A number typed as a percentage means something completely
+//             // different in Rupiah, so don't carry it across.
+//             setDiscountType(e.target.value)
+//             setDiscountInput('')
+//           }}
+//         >
+//           <option value="percent">{t('Persentase (%)')}</option>
+//           <option value="nominal">{t('Nominal (Rp)')}</option>
+//         </select>
+//       </label>
+//       <input
+//         type="number"
+//         min="0"
+//         max={discountType === 'percent' ? 100 : undefined}
+//         inputMode="numeric"
+//         value={discountInput}
+//         onChange={(e) => setDiscountInput(e.target.value)}
+//         placeholder={discountType === 'percent' ? t('Contoh: 10') : t('Contoh: 20000')}
+//         aria-label={discountType === 'percent' ? t('Diskon dalam persen') : t('Diskon dalam Rupiah')}
+//       />
+//     </div>
+//   )
+// }
 
 function NotesField({ notes, setNotes }) {
   const { t } = useLanguage()
@@ -275,7 +278,7 @@ function NotesField({ notes, setNotes }) {
   )
 }
 
-function TicketSummary({ subtotal, discountValue, total }) {
+function TicketSummary({ subtotal, total /* , discountValue */ }) {
   const { t } = useLanguage()
   return (
     <div className="transaksi-summary">
@@ -283,10 +286,12 @@ function TicketSummary({ subtotal, discountValue, total }) {
         <span>{t('Subtotal')}</span>
         <span>{formatRupiah(subtotal)}</span>
       </div>
+      {/* Discount row — disabled along with DiscountFields.
       <div>
         <span>{t('Diskon')}</span>
         <span>{formatRupiah(discountValue)}</span>
       </div>
+      */}
       <div className="transaksi-total">
         <span>{t('Total')}</span>
         <span>{formatRupiah(total)}</span>
@@ -313,8 +318,9 @@ export default function TransaksiBaru() {
   const [customerPhone, setCustomerPhone] = useState('')
   // Brands by vehicle slot key, same as plateNumbers.
   const [vehicleBrands, setVehicleBrands] = useState({})
-  const [discountType, setDiscountType] = useState('percent')
-  const [discountInput, setDiscountInput] = useState('')
+  // Disabled with DiscountFields:
+  // const [discountType, setDiscountType] = useState('percent')
+  // const [discountInput, setDiscountInput] = useState('')
   const [notes, setNotes] = useState('')
   // Promo or harga normal for every service on this ticket — see
   // PriceModeToggle. Defaults to promo, which is what Katalog advertises.
@@ -535,21 +541,25 @@ export default function TransaksiBaru() {
     })
   }
 
-  // Staff type the discount as either a percentage of the bill or a straight
-  // Rupiah amount. Percentages are resolved against the subtotal and rounded
-  // to a whole Rupiah — the DB column is numeric but the app never displays or
-  // stores fractional Rupiah (see formatRupiah). A discount can't exceed the
-  // bill, whichever way it was entered.
-  const discountValue = useMemo(() => {
-    const typed = Math.max(Number(discountInput) || 0, 0)
-    if (!typed) return 0
-    const value =
-      discountType === 'percent'
-        ? Math.round((subtotal * Math.min(typed, 100)) / 100)
-        : Math.round(typed)
-    return Math.min(value, subtotal)
-  }, [discountInput, discountType, subtotal])
-  const total = subtotal - discountValue
+  // No custom discount on a new ticket — the only price reduction is the
+  // promo/harga normal toggle, already reflected in each line's unit price.
+  const total = subtotal
+
+  // Disabled with DiscountFields. Staff typed the discount as either a
+  // percentage of the bill or a straight Rupiah amount. Percentages were
+  // resolved against the subtotal and rounded to a whole Rupiah, and a
+  // discount couldn't exceed the bill. To restore, uncomment this and set
+  // `total = subtotal - discountValue`.
+  // const discountValue = useMemo(() => {
+  //   const typed = Math.max(Number(discountInput) || 0, 0)
+  //   if (!typed) return 0
+  //   const value =
+  //     discountType === 'percent'
+  //       ? Math.round((subtotal * Math.min(typed, 100)) / 100)
+  //       : Math.round(typed)
+  //   return Math.min(value, subtotal)
+  // }, [discountInput, discountType, subtotal])
+  // const total = subtotal - discountValue
 
   // The screen scrolls inside `.worker-content`, not the window, so bring the
   // wizard's own top back into view whenever the page (or error) changes.
@@ -604,7 +614,7 @@ export default function TransaksiBaru() {
         pic: profile.full_name,
         notes: notes.trim() || null,
         items: selectedItems,
-        discount: discountValue,
+        discount: 0, // was: discountValue
         washStaffNames: washStaff,
         qcStaff: qcStaff ?? null,
       })
@@ -648,14 +658,15 @@ export default function TransaksiBaru() {
     <PriceModeToggle value={priceMode} onChange={changePriceMode} promoCount={promoCount} />
   )
 
-  const discountFields = (
-    <DiscountFields
-      discountType={discountType}
-      setDiscountType={setDiscountType}
-      discountInput={discountInput}
-      setDiscountInput={setDiscountInput}
-    />
-  )
+  // Disabled with DiscountFields:
+  // const discountFields = (
+  //   <DiscountFields
+  //     discountType={discountType}
+  //     setDiscountType={setDiscountType}
+  //     discountInput={discountInput}
+  //     setDiscountInput={setDiscountInput}
+  //   />
+  // )
 
   const missingFieldsModal = missingPopup && (
     <MissingFieldsModal issues={missingPopup} onClose={closeMissingPopup} />
@@ -830,12 +841,12 @@ export default function TransaksiBaru() {
             </div>
 
             <div className="worker-wizard-card">
-              {discountFields}
+              {/* {discountFields} */}
               <NotesField notes={notes} setNotes={setNotes} />
             </div>
 
             <div className="worker-wizard-card">
-              <TicketSummary subtotal={subtotal} discountValue={discountValue} total={total} />
+              <TicketSummary subtotal={subtotal} total={total} /* discountValue={discountValue} */ />
             </div>
           </section>
         )}
@@ -914,11 +925,11 @@ export default function TransaksiBaru() {
           onRemove={removeLine}
         />
 
-        {discountFields}
+        {/* {discountFields} */}
 
         <NotesField notes={notes} setNotes={setNotes} />
 
-        <TicketSummary subtotal={subtotal} discountValue={discountValue} total={total} />
+        <TicketSummary subtotal={subtotal} total={total} /* discountValue={discountValue} */ />
 
         {error && <p className="form-error">{t(error)}</p>}
 

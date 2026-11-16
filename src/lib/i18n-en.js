@@ -79,7 +79,6 @@ export const en = {
 
   // ---- QueueCard ----
   "Mulai Proses": "Start Work",
-  "Kirim ke QC": "Send to QC",
   "Tandai Selesai": "Mark Done",
   "Tutup Transaksi": "Close Transaction",
   "Gagal menyimpan pembayaran": "Failed to save the payment",
@@ -318,7 +317,6 @@ export const en = {
   "Gagal menetapkan petugas cuci": "Failed to assign wash staff",
   "Gagal menetapkan petugas QC": "Failed to assign QC staff",
   "Gagal memulai proses": "Failed to start work",
-  "Gagal mengirim ke QC": "Failed to send to QC",
   "Gagal menyelesaikan transaksi": "Failed to complete the transaction",
   "Gagal menutup transaksi": "Failed to close the transaction",
   "Batalkan transaksi ini?": "Void this transaction?",
@@ -330,10 +328,11 @@ export const en = {
   "Foto bukti pembayaran QRIS/transfer diperlukan sebelum transaksi bisa ditutup.": "A QRIS/transfer payment proof photo is required before the transaction can be closed.",
   "Pembayaran harus diverifikasi sebelum transaksi bisa ditutup.": "The payment must be verified before the transaction can be closed.",
   "Isi petugas cuci dan petugas QC terlebih dahulu sebelum menandai selesai.": "Assign the wash and QC staff before marking it done.",
-  "Unggah bukti foto cuci terlebih dahulu sebelum mengirim ke QC.": "Upload the wash proof photo before sending to QC.",
+  "Unggah bukti foto cuci terlebih dahulu sebelum menandai selesai.": "Upload the wash proof photo before marking it done.",
   "Unggah bukti foto cuci terlebih dahulu": "Upload the wash proof photo first",
   "Isi petugas cuci dan petugas QC terlebih dahulu": "Assign the wash and QC staff first",
   "Batalkan": "Void",
+  "Transaksi yang sudah dibayar tidak bisa dibatalkan": "A paid transaction can't be voided",
   "Bukti foto": "Photo proof",
 
   // ---- Kelola Staf ----

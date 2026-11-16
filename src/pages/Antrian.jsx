@@ -4,7 +4,6 @@ import {
   getActiveQueue,
   getWashProofMap,
   startProcessing,
-  sendToQC,
   markSelesai,
   closeTreatment,
   recordVerifiedPayment,
@@ -34,7 +33,6 @@ const STATUS_LABELS = {
 // whose payment isn't verified (see closeTreatment).
 const ADVANCE = {
   start: startProcessing,
-  qc: sendToQC,
   done: markSelesai,
   close: closeTreatment,
 }
@@ -137,8 +135,9 @@ export default function Antrian() {
       unpaid,
       revenue,
       belumDiproses: byStatus(['created', 'paid']),
-      diproses: byStatus(['diproses']),
-      qc: byStatus(['qc']),
+      // 'qc' is a retired stage — any old ticket still in it counts as in
+      // progress, since that's where it's finished from now.
+      diproses: byStatus(['diproses', 'qc']),
       selesai: byStatus(['selesai']),
     }
   }, [queue])
@@ -152,13 +151,13 @@ export default function Antrian() {
     { key: 'all', label: 'Semua', count: stats.count },
     { key: 'belum', label: 'Belum Diproses', count: stats.belumDiproses },
     { key: 'diproses', label: 'Diproses', count: stats.diproses },
-    { key: 'qc', label: 'QC', count: stats.qc },
     { key: 'selesai', label: 'Selesai', count: stats.selesai },
   ]
 
   const visibleQueue = useMemo(() => {
     if (filter === 'belum') return queue.filter((t) => t.status === 'created' || t.status === 'paid')
     if (filter === 'all') return queue
+    if (filter === 'diproses') return queue.filter((t) => t.status === 'diproses' || t.status === 'qc')
     return queue.filter((t) => t.status === filter)
   }, [queue, filter])
 
@@ -220,9 +219,9 @@ export default function Antrian() {
         </div>
         <div className="stat-card">
           <span className="stat-card-label">
-            <span className="status-badge status-qc">QC</span>
+            <span className="status-badge status-selesai">{t('Selesai')}</span>
           </span>
-          <span className="stat-card-value">{stats.qc}</span>
+          <span className="stat-card-value">{stats.selesai}</span>
         </div>
       </div>
         </>

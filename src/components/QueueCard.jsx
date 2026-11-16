@@ -9,14 +9,15 @@ import { daysOpen, isOverdue } from '../lib/taskReminder'
 import { useLanguage } from '../context/useLanguage'
 
 // Which chunky button a ticket shows is entirely a function of its status,
-// and it mirrors the ladder in DetailTreatment exactly — same three API calls,
-// same order, same photo gate on 'diproses'. A worker on the floor shouldn't
+// and it mirrors the ladder in DetailTreatment exactly — same API calls,
+// same order, same photo gate on 'diproses'. 'qc' is a retired stage kept only
+// so the odd old ticket still sitting in it can be finished. A worker on the floor shouldn't
 // have to open a ticket to advance it; the mockup's whole layout is built
 // around that one big button being right there on the card.
 const ACTIONS = {
   created: { label: 'Mulai Proses', tone: 'blue', action: 'start' },
   paid: { label: 'Mulai Proses', tone: 'blue', action: 'start' },
-  diproses: { label: 'Kirim ke QC', tone: 'green', action: 'qc' },
+  diproses: { label: 'Tandai Selesai', tone: 'green', action: 'done' },
   qc: { label: 'Tandai Selesai', tone: 'green', action: 'done' },
   selesai: { label: 'Tutup Transaksi', tone: 'green', action: 'close' },
 }
@@ -39,14 +40,15 @@ export function QueueCard({ treatment, statusLabel, hasPhoto, busy, onUploaded, 
   const open = () => navigate(`/treatment/${treatment.id}`)
 
   const step = ACTIONS[treatment.status]
-  // sendToQC is refused without a wash photo (DetailTreatment applies the same
-  // gate). Rather than a dead button plus a camera somewhere else on the card,
-  // the main button *is* the photo step until there is one: it opens the
-  // camera, and once the upload lands it turns into Kirim ke QC. Sending stays
-  // a separate press, so a blurry shot can be caught before the ticket moves.
-  const needsPhoto = step?.action === 'qc' && !hasPhoto
+  // Finishing a ticket that's in progress needs a wash photo (DetailTreatment
+  // applies the same gate). Rather than a dead button plus a camera somewhere
+  // else on the card, the main button *is* the photo step until there is one:
+  // it opens the camera, and once the upload lands it turns into Tandai
+  // Selesai. Finishing stays a separate press, so a blurry shot can be caught
+  // before the ticket moves.
+  const needsPhoto = treatment.status === 'diproses' && !hasPhoto
   const proof = useWashProofUpload({ treatmentId: treatment.id, onUploaded })
-  // Same idea for finishing: markSelesai refuses a ticket with no wash or QC
+  // Same idea for the crew: markSelesai refuses a ticket with no wash or QC
   // worker. The pickers live on Detail Transaksi, not the card, so the button
   // takes them there instead of sitting disabled.
   const needsStaff = step?.action === 'done' && !hasRequiredStaff(treatment)

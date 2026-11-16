@@ -5,7 +5,6 @@ import {
   closeTreatment,
   voidTreatment,
   startProcessing,
-  sendToQC,
   markSelesai,
   hasRequiredStaff,
   recordVerifiedPayment,
@@ -154,21 +153,8 @@ export default function DetailTreatment() {
     }
   }
 
-  async function handleSendToQC() {
-    if (!hasPhoto) return
-    setBusy(true)
-    try {
-      await sendToQC(id)
-      load()
-    } catch {
-      setError('Gagal mengirim ke QC')
-    } finally {
-      setBusy(false)
-    }
-  }
-
   async function handleMarkSelesai() {
-    if (!hasRequiredStaff(treatment)) return
+    if (!hasRequiredStaff(treatment) || !hasPhoto) return
     setBusy(true)
     try {
       await markSelesai(id)
@@ -193,13 +179,14 @@ export default function DetailTreatment() {
   }
 
   async function handleVoid() {
+    if (treatment.payment) return
     if (!confirm(t('Batalkan transaksi ini?'))) return
     setBusy(true)
     try {
       await voidTreatment(id)
       load()
-    } catch {
-      setError('Gagal membatalkan transaksi')
+    } catch (err) {
+      setError(err.message || 'Gagal membatalkan transaksi')
     } finally {
       setBusy(false)
     }
@@ -221,6 +208,9 @@ export default function DetailTreatment() {
   // Closing needs a verified payment: cash, or QRIS/transfer with a proof photo.
   const paymentVerified = isPaymentVerified(treatment.payment)
   const staffReady = hasRequiredStaff(treatment)
+  // In progress → done. 'qc' is a retired stage; old tickets still in it
+  // finish the same way.
+  const canFinish = treatment.status === 'diproses' || treatment.status === 'qc'
 
   return (
     <div className="detail-screen">
@@ -383,12 +373,12 @@ export default function DetailTreatment() {
           </p>
         )}
 
-        {treatment.status === 'qc' && !staffReady && (
-          <p className="detail-hint">{t('Isi petugas cuci dan petugas QC terlebih dahulu sebelum menandai selesai.')}</p>
+        {canFinish && !hasPhoto && (
+          <p className="detail-hint">{t('Unggah bukti foto cuci terlebih dahulu sebelum menandai selesai.')}</p>
         )}
 
-        {treatment.status === 'diproses' && !hasPhoto && (
-          <p className="detail-hint">{t('Unggah bukti foto cuci terlebih dahulu sebelum mengirim ke QC.')}</p>
+        {canFinish && !staffReady && (
+          <p className="detail-hint">{t('Isi petugas cuci dan petugas QC terlebih dahulu sebelum menandai selesai.')}</p>
         )}
 
         {treatment.notes && (
@@ -408,24 +398,19 @@ export default function DetailTreatment() {
                   {t('Mulai Proses')}
                 </button>
               )}
-              {treatment.status === 'diproses' && (
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={handleSendToQC}
-                  disabled={busy || !hasPhoto}
-                  title={hasPhoto ? undefined : t('Unggah bukti foto cuci terlebih dahulu')}
-                >
-                  {t('Kirim ke QC')}
-                </button>
-              )}
-              {treatment.status === 'qc' && (
+              {canFinish && (
                 <button
                   type="button"
                   className="btn-primary"
                   onClick={handleMarkSelesai}
-                  disabled={busy || !staffReady}
-                  title={staffReady ? undefined : t('Isi petugas cuci dan petugas QC terlebih dahulu')}
+                  disabled={busy || !staffReady || !hasPhoto}
+                  title={
+                    !hasPhoto
+                      ? t('Unggah bukti foto cuci terlebih dahulu')
+                      : staffReady
+                        ? undefined
+                        : t('Isi petugas cuci dan petugas QC terlebih dahulu')
+                  }
                 >
                   {t('Tandai Selesai')}
                 </button>
@@ -435,7 +420,13 @@ export default function DetailTreatment() {
                   {t('Tutup Transaksi')}
                 </button>
               )}
-              <button type="button" className="btn-danger" onClick={handleVoid} disabled={busy}>
+              <button
+                type="button"
+                className="btn-danger"
+                onClick={handleVoid}
+                disabled={busy || isPaid}
+                title={isPaid ? t('Transaksi yang sudah dibayar tidak bisa dibatalkan') : undefined}
+              >
                 {t('Batalkan')}
               </button>
             </>
