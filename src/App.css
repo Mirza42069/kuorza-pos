@@ -4044,3 +4044,172 @@
   transform: translateY(3px);
   box-shadow: none;
 }
+
+/* ---- Transaksi Baru: required fields left empty ---- */
+/* Kept last so the red border wins over the panel/wizard :focus rules, which
+   have the same specificity. */
+.ticket-panel label.is-invalid,
+.worker-wizard-card label.is-invalid {
+  color: var(--pos-red-text);
+}
+
+.ticket-panel input.is-invalid,
+.worker-wizard-card input.is-invalid {
+  border-color: var(--pos-red-text);
+  background: var(--pos-red-bg);
+  box-shadow: 0 0 0 3px rgba(161, 47, 47, 0.12);
+}
+
+.ticket-panel input.is-invalid:focus,
+.worker-wizard-card input.is-invalid:focus {
+  border-color: var(--pos-red-text);
+  background: var(--pos-surface);
+}
+
+.field-invalid-hint {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--pos-red-text);
+}
+
+.ticket-lines-empty.is-invalid {
+  color: var(--pos-red-text);
+  background: var(--pos-red-bg);
+  border: 1px dashed var(--pos-red-text);
+  border-radius: 8px;
+}
+
+.missing-fields-icon {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 12px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--pos-red-text);
+  background: var(--pos-red-bg);
+}
+
+.missing-fields-list {
+  margin: 0;
+  padding: 10px 12px 10px 30px;
+  border-radius: 10px;
+  background: var(--pos-red-bg);
+  color: var(--pos-red-text);
+  font-size: 13.5px;
+  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.missing-fields-modal .start-modal-actions .btn-primary {
+  min-width: 120px;
+}
+
+/* ---- Transaksi Baru: promo / normal price switch ---- */
+.price-mode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0 0 18px;
+}
+
+.price-mode-toggle {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--pos-gray-bg);
+  border: 1px solid var(--pos-border);
+}
+
+.price-mode-option {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pos-text-muted);
+  cursor: pointer;
+}
+
+.price-mode-option.active {
+  background: var(--pos-surface);
+  color: var(--pos-blue-dark);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.12);
+}
+
+.price-mode-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.price-mode-hint {
+  font-size: 12.5px;
+  color: var(--pos-text-faint);
+}
+
+/* Phone wizard: full-width, thumb-sized segments. */
+.worker-wizard .price-mode-toggle {
+  display: flex;
+  width: 100%;
+}
+
+.worker-wizard .price-mode-option {
+  flex: 1;
+  min-height: 44px;
+  font-size: 14px;
+}
+
+/* ---- Bahasa / English switch (login card + both app shells) ---- */
+.language-toggle {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--pos-gray-bg);
+  border: 1px solid var(--pos-border);
+  flex: none;
+}
+
+.language-toggle-option {
+  min-width: 34px;
+  padding: 5px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--pos-text-muted);
+  cursor: pointer;
+}
+
+.language-toggle-option.active {
+  background: var(--pos-surface);
+  color: var(--pos-blue-dark);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.12);
+}
+
+/* Login: pinned to the card's top-right corner. */
+.login-card {
+  position: relative;
+}
+
+.login-language {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+}
+
+/* Phone top bar: a touch target, not a desktop pill. */
+.language-toggle-compact .language-toggle-option {
+  min-width: 38px;
+  min-height: 34px;
+}

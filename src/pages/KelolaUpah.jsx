@@ -9,6 +9,7 @@ import {
 } from '../api'
 import { formatRupiah } from '../lib/format'
 import { todayDateInput } from '../lib/dateRange'
+import { useLanguage } from '../context/useLanguage'
 
 // Supervisor/admin only (see SupervisorRoute in App.jsx). Two things:
 //   - Upah per Layanan: a fixed rupiah amount each service pays out (e.g.
@@ -19,6 +20,7 @@ import { todayDateInput } from '../lib/dateRange'
 // The commission itself is never stored — see getDailyWageSummary in
 // src/api/wages.js for how it's computed from today's tickets.
 export default function KelolaUpah() {
+  const { t } = useLanguage()
   const [services, setServices] = useState([])
   const [rates, setRates] = useState([])
   const [ratesLoading, setRatesLoading] = useState(true)
@@ -56,8 +58,8 @@ export default function KelolaUpah() {
 
   return (
     <div className="upah-screen">
-      <h1>Kelola Upah</h1>
-      {error && <p className="form-error">{error}</p>}
+      <h1>{t('Kelola Upah')}</h1>
+      {error && <p className="form-error">{t(error)}</p>}
 
       <ServiceWageSection
         services={services}
@@ -75,25 +77,26 @@ export default function KelolaUpah() {
 // regardless of the service's list price. Applies to whoever's listed as
 // wash staff on the ticket, same as elsewhere in the app.
 function ServiceWageSection({ services, rates, loading, onChanged, onError }) {
+  const { t } = useLanguage()
   const wageByService = new Map(rates.map((r) => [r.service_id, Number(r.wage_amount)]))
 
   return (
     <section className="staf-section">
       <div className="staf-section-header">
-        <h2 className="transaksi-section-label">Upah per Layanan</h2>
+        <h2 className="transaksi-section-label">{t('Upah per Layanan')}</h2>
       </div>
       {/* <p className="staf-section-note">
         Nominal tetap yang didapat staf setiap kali mereka mengerjakan layanan ini pada satu kendaraan —
         bukan persentase, dan tidak tergantung harga jual layanan.
       </p> */}
 
-      {loading && <p className="riwayat-loading">Memuat...</p>}
-      {!loading && services.length === 0 && <p className="riwayat-empty">Belum ada layanan</p>}
+      {loading && <p className="riwayat-loading">{t('Memuat...')}</p>}
+      {!loading && services.length === 0 && <p className="riwayat-empty">{t('Belum ada layanan')}</p>}
       {!loading && services.length > 0 && (
         <div className="riwayat-table upah-rate-table">
           <div className="riwayat-table-row riwayat-table-head">
-            <span>Layanan</span>
-            <span>Upah</span>
+            <span>{t('Layanan')}</span>
+            <span>{t('Upah')}</span>
             <span></span>
           </div>
           {services.map((service) => {
@@ -118,6 +121,7 @@ function ServiceWageSection({ services, rates, loading, onChanged, onError }) {
 }
 
 function ServiceWageRow({ service, currentWage, onChanged, onError }) {
+  const { t } = useLanguage()
   const [value, setValue] = useState(String(currentWage))
   const [busy, setBusy] = useState(false)
   const dirty = value !== '' && Math.round(Number(value)) !== currentWage
@@ -153,12 +157,12 @@ function ServiceWageRow({ service, currentWage, onChanged, onError }) {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           disabled={busy}
-          aria-label={`Upah ${service.name}`}
+          aria-label={t('Upah {name}', { name: service.name })}
         />
       </span>
       <span className="staf-row-actions">
         <button type="button" className="btn-secondary" onClick={handleSave} disabled={busy || !dirty}>
-          {busy ? 'Menyimpan...' : 'Simpan'}
+          {busy ? t('Menyimpan...') : t('Simpan')}
         </button>
       </span>
     </div>
@@ -168,6 +172,7 @@ function ServiceWageRow({ service, currentWage, onChanged, onError }) {
 // What each staff member earned on one day: fixed-wage services they
 // washed, plus bonuses, minus deductions.
 function DailyWageSection({ ratesVersion, onError }) {
+  const { t } = useLanguage()
   const [date, setDate] = useState(todayDateInput())
   const [summary, setSummary] = useState([])
   const [loading, setLoading] = useState(true)
@@ -196,13 +201,13 @@ function DailyWageSection({ ratesVersion, onError }) {
   return (
     <section className="staf-section">
       <div className="staf-section-header">
-        <h2 className="transaksi-section-label">Upah Harian</h2>
+        <h2 className="transaksi-section-label">{t('Upah Harian')}</h2>
         <input
           type="date"
           value={date}
           max={todayDateInput()}
           onChange={(e) => setDate(e.target.value)}
-          aria-label="Tanggal"
+          aria-label={t('Tanggal')}
         />
       </div>
       {/* <p className="staf-section-note">
@@ -210,26 +215,26 @@ function DailyWageSection({ ratesVersion, onError }) {
         manual.
       </p> */}
 
-      {loading && <p className="riwayat-loading">Memuat...</p>}
+      {loading && <p className="riwayat-loading">{t('Memuat...')}</p>}
 
       {!loading && (
         <>
           <div className="stat-cards upah-stat-cards">
             <div className="stat-card">
-              <span className="stat-card-label">Total Upah</span>
+              <span className="stat-card-label">{t('Total Upah')}</span>
               <span className="stat-card-value stat-card-value-accent">{formatRupiah(totalNet)}</span>
             </div>
           </div>
 
           {summary.length === 0 ? (
-            <p className="riwayat-empty">Belum ada staf aktif</p>
+            <p className="riwayat-empty">{t('Belum ada staf aktif')}</p>
           ) : (
             <div className="riwayat-table upah-daily-table">
               <div className="riwayat-table-row riwayat-table-head">
-                <span>Nama</span>
-                <span>Upah Jasa</span>
-                <span>Penyesuaian</span>
-                <span>Total Upah</span>
+                <span>{t('Nama')}</span>
+                <span>{t('Upah Jasa')}</span>
+                <span>{t('Penyesuaian')}</span>
+                <span>{t('Total Upah')}</span>
                 <span></span>
               </div>
               {summary.map((row) => (
@@ -252,6 +257,7 @@ function DailyWageSection({ ratesVersion, onError }) {
 }
 
 function DailyWageRow({ row, date, expanded, onToggle, onChanged, onError }) {
+  const { t } = useLanguage()
   return (
     <>
       <div className="riwayat-table-row upah-daily-row">
@@ -269,7 +275,7 @@ function DailyWageRow({ row, date, expanded, onToggle, onChanged, onError }) {
         </span>
         <span className="staf-row-actions">
           <button type="button" className="btn-secondary" onClick={onToggle}>
-            {expanded ? 'Tutup' : 'Detail'}
+            {expanded ? t('Tutup') : t('Detail')}
           </button>
         </span>
       </div>
@@ -297,8 +303,9 @@ function DailyWageRow({ row, date, expanded, onToggle, onChanged, onError }) {
 // Per-service tally behind one worker's Upah Jasa: how many of each service
 // they washed that day, the sale value of those lines, and the wage they paid.
 function ServiceBreakdown({ rows }) {
+  const { t } = useLanguage()
   if (rows.length === 0) {
-    return <p className="upah-breakdown-empty">Belum ada layanan dikerjakan pada tanggal ini</p>
+    return <p className="upah-breakdown-empty">{t('Belum ada layanan dikerjakan pada tanggal ini')}</p>
   }
   const totalCount = rows.reduce((sum, r) => sum + r.count, 0)
   const totalNominal = rows.reduce((sum, r) => sum + r.nominal, 0)
@@ -307,10 +314,10 @@ function ServiceBreakdown({ rows }) {
     <table className="upah-breakdown">
       <thead>
         <tr>
-          <th>Layanan</th>
-          <th>Jumlah</th>
-          <th>Nominal</th>
-          <th>Upah</th>
+          <th>{t('Layanan')}</th>
+          <th>{t('Jumlah')}</th>
+          <th>{t('Nominal')}</th>
+          <th>{t('Upah')}</th>
         </tr>
       </thead>
       <tbody>
@@ -325,7 +332,7 @@ function ServiceBreakdown({ rows }) {
       </tbody>
       <tfoot>
         <tr>
-          <td>Total</td>
+          <td>{t('Total')}</td>
           <td>{totalCount}</td>
           <td>{formatRupiah(totalNominal)}</td>
           <td>{formatRupiah(totalWage)}</td>
@@ -338,6 +345,7 @@ function ServiceBreakdown({ rows }) {
 // Bonus/deduction amounts are always a flat rupiah nominal, typed in by the
 // supervisor — never a percentage of anything.
 function AddAdjustmentForm({ profileId, date, onAdded, onError }) {
+  const { t } = useLanguage()
   const [type, setType] = useState('bonus')
   const [amount, setAmount] = useState('')
   const [reason, setReason] = useState('')
@@ -366,34 +374,35 @@ function AddAdjustmentForm({ profileId, date, onAdded, onError }) {
 
   return (
     <form className="upah-adjustment-form" onSubmit={handleSubmit}>
-      <select value={type} onChange={(e) => setType(e.target.value)} disabled={submitting} aria-label="Jenis">
-        <option value="bonus">Bonus (+)</option>
-        <option value="deduction">Potongan (-)</option>
+      <select value={type} onChange={(e) => setType(e.target.value)} disabled={submitting} aria-label={t('Jenis')}>
+        <option value="bonus">{t('Bonus (+)')}</option>
+        <option value="deduction">{t('Potongan (-)')}</option>
       </select>
       <input
         type="number"
         min="0"
         inputMode="numeric"
-        placeholder="Jumlah (Rp)"
+        placeholder={t('Jumlah (Rp)')}
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
         disabled={submitting}
       />
       <input
         type="text"
-        placeholder="Alasan (opsional)"
+        placeholder={t('Alasan (opsional)')}
         value={reason}
         onChange={(e) => setReason(e.target.value)}
         disabled={submitting}
       />
       <button type="submit" className="btn-primary" disabled={submitting}>
-        {submitting ? 'Menyimpan...' : 'Tambah'}
+        {submitting ? t('Menyimpan...') : t('Tambah')}
       </button>
     </form>
   )
 }
 
 function AdjustmentListItem({ adjustment, onDeleted, onError }) {
+  const { t } = useLanguage()
   const [busy, setBusy] = useState(false)
 
   async function handleDelete() {
@@ -412,12 +421,12 @@ function AdjustmentListItem({ adjustment, onDeleted, onError }) {
   return (
     <li className="upah-adjustment-item">
       <span className={`status-badge ${adjustment.type === 'bonus' ? 'status-closed' : 'status-voided'}`}>
-        {adjustment.type === 'bonus' ? 'Bonus' : 'Potongan'}
+        {adjustment.type === 'bonus' ? t('Bonus') : t('Potongan')}
       </span>
       <span className="upah-adjustment-amount">{formatRupiah(adjustment.amount)}</span>
       <span className="upah-adjustment-reason">{adjustment.reason || '-'}</span>
       <button type="button" className="btn-secondary" onClick={handleDelete} disabled={busy}>
-        {busy ? '...' : 'Hapus'}
+        {busy ? '...' : t('Hapus')}
       </button>
     </li>
   )

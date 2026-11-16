@@ -1,21 +1,24 @@
 import { useState } from 'react'
 import { formatRupiah } from '../lib/format'
-import { getServicePrice, hasPromo } from '../lib/servicePrice'
+import { getServicePrice, hasPromo, PRICE_MODES } from '../lib/servicePrice'
 import { groupServicesByCategory } from '../lib/serviceCategories'
+import { useLanguage } from '../context/useLanguage'
 
 // One collapsible section per category (Motor / Mobil / Helm). The full menu
 // is ~50 cards, far too long to scroll on a phone, and a ticket is almost
 // always for one kind of vehicle — so only one section is open at a time.
 // Lines already on the ticket stay there when a section closes; its header
 // shows how many came from it.
-export function ServicePicker({ services, selectedItems, onAdd }) {
+// priceMode decides which price the cards show — see getServicePrice.
+export function ServicePicker({ services, selectedItems, onAdd, priceMode = PRICE_MODES.PROMO }) {
+  const { t } = useLanguage()
   const groups = groupServicesByCategory(services)
   // undefined = nothing chosen yet, so the first category starts open;
   // null = the user closed everything.
   const [openKey, setOpenKey] = useState(undefined)
 
   if (services.length === 0) {
-    return <p className="service-picker-empty">Belum ada layanan aktif</p>
+    return <p className="service-picker-empty">{t('Belum ada layanan aktif')}</p>
   }
 
   const currentKey = openKey === undefined ? groups[0]?.key : openKey
@@ -38,8 +41,10 @@ export function ServicePicker({ services, selectedItems, onAdd }) {
               aria-controls={panelId}
               onClick={() => setOpenKey(isOpen ? null : group.key)}
             >
-              <span className="service-category-label">{group.label}</span>
-              <span className="service-category-meta">{group.services.length} layanan</span>
+              <span className="service-category-label">{t(group.label)}</span>
+              <span className="service-category-meta">
+                {t('{count} layanan', { count: group.services.length })}
+              </span>
               {selectedCount > 0 && <span className="service-category-count">{selectedCount}</span>}
               <span className="service-category-chevron" aria-hidden="true" />
             </button>
@@ -48,6 +53,7 @@ export function ServicePicker({ services, selectedItems, onAdd }) {
               <div id={panelId} className="service-picker-grid service-category-panel">
                 {group.services.map((service) => {
                   const selected = selectedItems.find((item) => item.serviceId === service.id)
+                  const showPromo = priceMode === PRICE_MODES.PROMO && hasPromo(service)
                   return (
                     <button
                       key={service.id}
@@ -58,8 +64,8 @@ export function ServicePicker({ services, selectedItems, onAdd }) {
                       {selected && <span className="service-card-qty">{selected.quantity}</span>}
                       <span className="service-card-name">{service.name}</span>
                       <span className="service-card-price">
-                        {formatRupiah(getServicePrice(service))}
-                        {hasPromo(service) && (
+                        {formatRupiah(getServicePrice(service, priceMode))}
+                        {showPromo && (
                           <span className="service-card-normal-price">{formatRupiah(service.price)}</span>
                         )}
                       </span>

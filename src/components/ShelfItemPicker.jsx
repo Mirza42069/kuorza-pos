@@ -1,4 +1,5 @@
 import { formatRupiah } from '../lib/format'
+import { useLanguage } from '../context/useLanguage'
 
 // Same card grid as ServicePicker, but goods are finite: each card shows what
 // is left and stops adding once the ticket holds the whole shelf. The list it
@@ -8,8 +9,9 @@ import { formatRupiah } from '../lib/format'
 // button, which silently swallows the tap on a phone — so onAdd always fires
 // and the caller can surface an alert instead of nothing happening.
 export function ShelfItemPicker({ items, selectedItems, onAdd }) {
+  const { t } = useLanguage()
   if (items.length === 0) {
-    return <p className="service-picker-empty">Belum ada barang tersedia</p>
+    return <p className="service-picker-empty">{t('Belum ada barang tersedia')}</p>
   }
 
   return (
@@ -24,12 +26,12 @@ export function ShelfItemPicker({ items, selectedItems, onAdd }) {
             type="button"
             className={`service-card ${selected ? 'selected' : ''} ${soldOut ? 'sold-out' : ''}`}
             onClick={() => onAdd(item, soldOut)}
-            title={soldOut ? 'Stok habis' : undefined}
+            title={soldOut ? t('Stok habis') : undefined}
           >
             {selected && <span className="service-card-qty">{selected.quantity}</span>}
             <span className="service-card-name">{item.name}</span>
             <span className="service-card-price">{formatRupiah(item.price)}</span>
-            <span className="service-card-stock">Sisa {item.stock - taken}</span>
+            <span className="service-card-stock">{t('Sisa {count}', { count: item.stock - taken })}</span>
           </button>
         )
       })}

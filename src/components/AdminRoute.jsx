@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
+import { useLanguage } from '../context/useLanguage'
 import { isAdmin } from '../lib/roles'
 
 // Gates a route to role 'admin'. Client-side only — the real enforcement is
@@ -7,8 +8,9 @@ import { isAdmin } from '../lib/roles'
 // just keeps non-admins from seeing the page/nav item.
 export function AdminRoute() {
   const { profile, loading } = useAuth()
+  const { t } = useLanguage()
 
-  if (loading) return <div className="loading-screen">Memuat...</div>
+  if (loading) return <div className="loading-screen">{t('Memuat...')}</div>
   if (!profile) return <Navigate to="/login" replace />
   if (!isAdmin(profile)) return <Navigate to="/" replace />
 

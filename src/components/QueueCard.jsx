@@ -6,6 +6,7 @@ import { PaymentModal } from './PaymentModal'
 import { hasRequiredStaff } from '../api'
 import { formatDateTime, ticketLabel } from '../lib/format'
 import { daysOpen, isOverdue } from '../lib/taskReminder'
+import { useLanguage } from '../context/useLanguage'
 
 // Which chunky button a ticket shows is entirely a function of its status,
 // and it mirrors the ladder in DetailTreatment exactly — same three API calls,
@@ -29,6 +30,7 @@ const ACCENTS = {
 
 export function QueueCard({ treatment, statusLabel, hasPhoto, busy, onUploaded, onAdvance, onPay }) {
   const navigate = useNavigate()
+  const { t } = useLanguage()
   const [startOpen, setStartOpen] = useState(false)
   // null | 'pay' (record payment) | 'proof' (payment recorded, photo missing)
   const [payMode, setPayMode] = useState(null)
@@ -120,10 +122,14 @@ export function QueueCard({ treatment, statusLabel, hasPhoto, busy, onUploaded, 
               treatment.isPaymentVerified ? 'status-closed' : treatment.isPaid ? 'status-diproses' : 'status-created'
             }`}
           >
-            {treatment.isPaymentVerified ? 'Lunas' : treatment.isPaid ? 'Bukti Bayar Belum Ada' : 'Belum Dibayar'}
+            {treatment.isPaymentVerified
+              ? t('Lunas')
+              : treatment.isPaid
+                ? t('Bukti Bayar Belum Ada')
+                : t('Belum Dibayar')}
           </span>
           {overdue && (
-            <span className="overdue-badge">⚠️ {daysOpen(treatment.created_at)} hari</span>
+            <span className="overdue-badge">⚠️ {t('{days} hari', { days: daysOpen(treatment.created_at) })}</span>
           )}
         </div>
       </div>
@@ -136,11 +142,11 @@ export function QueueCard({ treatment, statusLabel, hasPhoto, busy, onUploaded, 
             onClick={proof.open}
             disabled={busy || proof.uploading}
           >
-            {proof.uploading ? 'Mengunggah…' : '📷 Foto Bukti Cuci'}
+            {proof.uploading ? t('Mengunggah…') : `📷 ${t('Foto Bukti Cuci')}`}
           </button>
         ) : needsStaff ? (
           <button type="button" className="worker-btn worker-btn-blue" onClick={open} disabled={busy}>
-            Pilih Petugas
+            {t('Pilih Petugas')}
           </button>
         ) : needsPayment ? (
           <button
@@ -149,7 +155,7 @@ export function QueueCard({ treatment, statusLabel, hasPhoto, busy, onUploaded, 
             onClick={() => setPayMode('pay')}
             disabled={busy}
           >
-            💳 Verifikasi Pembayaran
+            💳 {t('Verifikasi Pembayaran')}
           </button>
         ) : needsPaymentProof ? (
           <button
@@ -158,7 +164,7 @@ export function QueueCard({ treatment, statusLabel, hasPhoto, busy, onUploaded, 
             onClick={() => setPayMode('proof')}
             disabled={busy}
           >
-            📷 Foto Bukti Bayar
+            📷 {t('Foto Bukti Bayar')}
           </button>
         ) : step ? (
           <button
@@ -167,12 +173,12 @@ export function QueueCard({ treatment, statusLabel, hasPhoto, busy, onUploaded, 
             onClick={() => (step.action === 'start' ? setStartOpen(true) : onAdvance(treatment.id, step.action))}
             disabled={busy}
           >
-            {step.label}
+            {t(step.label)}
           </button>
         ) : (
-          <span className="worker-btn-static">Siap Diambil</span>
+          <span className="worker-btn-static">{t('Siap Diambil')}</span>
         )}
-        <button type="button" className="worker-btn worker-btn-ghost" onClick={open} aria-label="Lihat detail transaksi">
+        <button type="button" className="worker-btn worker-btn-ghost" onClick={open} aria-label={t('Lihat detail transaksi')}>
           i
         </button>
         {/* Outside .queue-card-main on purpose: that area navigates on click,
@@ -204,7 +210,7 @@ export function QueueCard({ treatment, statusLabel, hasPhoto, busy, onUploaded, 
           onConfirm={handlePay}
         />
       )}
-      {proof.error && <p className="form-error queue-card-proof-error">{proof.error}</p>}
+      {proof.error && <p className="form-error queue-card-proof-error">{t(proof.error)}</p>}
     </article>
   )
 }

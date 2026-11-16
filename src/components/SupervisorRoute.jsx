@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
+import { useLanguage } from '../context/useLanguage'
 import { isSupervisor } from '../lib/roles'
 
 // Gates a route to supervisor or admin — the operations-oversight pages
@@ -9,8 +10,9 @@ import { isSupervisor } from '../lib/roles'
 // who types the URL sees the redirect, not an error.
 export function SupervisorRoute() {
   const { profile, loading } = useAuth()
+  const { t } = useLanguage()
 
-  if (loading) return <div className="loading-screen">Memuat...</div>
+  if (loading) return <div className="loading-screen">{t('Memuat...')}</div>
   if (!profile) return <Navigate to="/login" replace />
   if (!isSupervisor(profile)) return <Navigate to="/" replace />
 

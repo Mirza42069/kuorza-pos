@@ -1,6 +1,8 @@
 import { useWashProofUpload } from './useWashProofUpload'
+import { useLanguage } from '../context/useLanguage'
 
 export function WashProofButton({ treatmentId, hasPhoto, onUploaded, onError }) {
+  const { t } = useLanguage()
   const { open, uploading, error, capture } = useWashProofUpload({ treatmentId, onUploaded, onError })
 
   return (
@@ -12,11 +14,11 @@ export function WashProofButton({ treatmentId, hasPhoto, onUploaded, onError }) 
           e.stopPropagation()
           open()
         }}
-        title={error || (hasPhoto ? 'Ganti bukti foto' : 'Unggah bukti foto')}
+        title={error ? t(error) : hasPhoto ? t('Ganti bukti foto') : t('Unggah bukti foto')}
         role="button"
-        aria-label={hasPhoto ? 'Ganti bukti foto cuci' : 'Unggah bukti foto cuci'}
+        aria-label={hasPhoto ? t('Ganti bukti foto cuci') : t('Unggah bukti foto cuci')}
       >
-        {uploading ? '…' : hasPhoto ? '✓ Foto' : '📷 Foto'}
+        {uploading ? '…' : hasPhoto ? `✓ ${t('Foto')}` : `📷 ${t('Foto')}`}
       </span>
       {capture}
     </>

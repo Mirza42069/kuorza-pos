@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getActiveProfiles } from '../api'
+import { useLanguage } from '../context/useLanguage'
 
 // Plain <select> of everyone active — used to assign who's washing/QC'ing a
 // job. One roster since migration 009 folded field_workers into profiles, so
@@ -7,6 +8,7 @@ import { getActiveProfiles } from '../api'
 // value/onChange work in terms of full_name (text snapshot, not id) —
 // consistent with how treatments.pic already stores staff identity.
 export function StaffPicker({ value, onChange, disabled }) {
+  const { t } = useLanguage()
   const [workers, setWorkers] = useState([])
 
   useEffect(() => {
@@ -20,7 +22,7 @@ export function StaffPicker({ value, onChange, disabled }) {
       disabled={disabled}
       onChange={(e) => onChange(e.target.value || null)}
     >
-      <option value="">Belum ditentukan</option>
+      <option value="">{t('Belum ditentukan')}</option>
       {workers.map((w) => (
         <option key={w.id} value={w.full_name}>
           {w.full_name}

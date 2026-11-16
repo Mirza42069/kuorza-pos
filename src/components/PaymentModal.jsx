@@ -4,6 +4,7 @@ import { CameraCapture } from './CameraCapture'
 import { paymentNeedsProof } from '../api'
 import { isCameraSupported } from '../lib/camera'
 import { formatRupiah } from '../lib/format'
+import { useLanguage } from '../context/useLanguage'
 
 // Recording a payment so the ticket can be closed. Cash is confirmed as is;
 // QRIS and transfer need a camera photo of the payment confirmation screen
@@ -14,6 +15,7 @@ import { formatRupiah } from '../lib/format'
 // proof photo is missing — skips the method step.
 // onConfirm({ paymentMethod, proofFile }) — proofFile is null for cash.
 export function PaymentModal({ total, busy, error, proofOnly = false, initialMethod = 'cash', onConfirm, onCancel }) {
+  const { t } = useLanguage()
   const [method, setMethod] = useState(initialMethod)
   const [proofFile, setProofFile] = useState(null)
   const [cameraOpen, setCameraOpen] = useState(false)
@@ -59,16 +61,16 @@ export function PaymentModal({ total, busy, error, proofOnly = false, initialMet
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="payment-modal-title" className="start-modal-title">
-          {proofOnly ? 'Foto Bukti Pembayaran' : 'Verifikasi Pembayaran'}
+          {proofOnly ? t('Foto Bukti Pembayaran') : t('Verifikasi Pembayaran')}
         </h2>
         <div className="payment-modal-total">
-          <span>Total</span>
+          <span>{t('Total')}</span>
           <span>{formatRupiah(total)}</span>
         </div>
 
         {!proofOnly && (
           <>
-            <p className="start-modal-hint">Pilih metode pembayaran yang diterima.</p>
+            <p className="start-modal-hint">{t('Pilih metode pembayaran yang diterima.')}</p>
             <PaymentMethodSelector value={method} onChange={changeMethod} />
           </>
         )}
@@ -76,22 +78,24 @@ export function PaymentModal({ total, busy, error, proofOnly = false, initialMet
         {needsProof ? (
           <div className="payment-modal-proof">
             <p className="start-modal-hint">
-              Foto layar bukti pembayaran {method === 'transfer' ? 'transfer' : 'QRIS'} dari pelanggan.
+              {method === 'transfer'
+                ? t('Foto layar bukti pembayaran transfer dari pelanggan.')
+                : t('Foto layar bukti pembayaran QRIS dari pelanggan.')}
             </p>
-            {proofUrl && <img src={proofUrl} alt="Bukti pembayaran" className="payment-modal-proof-img" />}
+            {proofUrl && <img src={proofUrl} alt={t('Bukti pembayaran')} className="payment-modal-proof-img" />}
             <button type="button" className="btn-secondary" onClick={openCamera} disabled={busy}>
-              {proofFile ? '📷 Ulangi Foto' : '📷 Ambil Foto Bukti'}
+              📷 {proofFile ? t('Ulangi Foto') : t('Ambil Foto Bukti')}
             </button>
           </div>
         ) : (
-          <p className="start-modal-hint">Pastikan uang tunai sudah diterima sebelum konfirmasi.</p>
+          <p className="start-modal-hint">{t('Pastikan uang tunai sudah diterima sebelum konfirmasi.')}</p>
         )}
 
-        {(cameraError || error) && <p className="form-error">{cameraError || error}</p>}
+        {(cameraError || error) && <p className="form-error">{t(cameraError || error)}</p>}
 
         <div className="start-modal-actions">
           <button type="button" className="btn-secondary" onClick={onCancel} disabled={busy}>
-            Batal
+            {t('Batal')}
           </button>
           <button
             type="button"
@@ -99,7 +103,7 @@ export function PaymentModal({ total, busy, error, proofOnly = false, initialMet
             onClick={() => onConfirm({ paymentMethod: method, proofFile: needsProof ? proofFile : null })}
             disabled={!canConfirm}
           >
-            {busy ? 'Menyimpan...' : 'Konfirmasi'}
+            {busy ? t('Menyimpan...') : t('Konfirmasi')}
           </button>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useLanguage } from '../context/useLanguage'
 import { startCameraStream, stopCameraStream, captureFrame, describeCameraError } from '../lib/camera'
 
 // Full-screen camera sheet: live preview -> shutter -> review the shot ->
@@ -6,6 +7,7 @@ import { startCameraStream, stopCameraStream, captureFrame, describeCameraError 
 // is no "pick a file" escape hatch, so wash proof is always a live photo. A
 // camera failure shows its reason here and the sheet closes via onClose.
 export function CameraCapture({ onCapture, onClose }) {
+  const { t } = useLanguage()
   const videoRef = useRef(null)
   const streamRef = useRef(null)
   const [error, setError] = useState('')
@@ -72,29 +74,29 @@ export function CameraCapture({ onCapture, onClose }) {
   }
 
   return (
-    <div className="camera-sheet" role="dialog" aria-modal="true" aria-label="Ambil foto">
+    <div className="camera-sheet" role="dialog" aria-modal="true" aria-label={t('Ambil foto')}>
       <div className="camera-stage">
         {shot ? (
-          <img src={shot.url} alt="Hasil foto" className="camera-preview" />
+          <img src={shot.url} alt={t('Hasil foto')} className="camera-preview" />
         ) : (
           <video ref={videoRef} className="camera-preview" autoPlay playsInline muted />
         )}
-        {!ready && !error && !shot && <p className="camera-hint">Membuka kamera...</p>}
+        {!ready && !error && !shot && <p className="camera-hint">{t('Membuka kamera...')}</p>}
       </div>
 
-      {error && <p className="camera-error">{error}</p>}
+      {error && <p className="camera-error">{t(error)}</p>}
 
       <div className="camera-actions">
         <button type="button" className="btn-secondary" onClick={onClose}>
-          Batal
+          {t('Batal')}
         </button>
         {shot ? (
           <>
             <button type="button" className="btn-secondary" onClick={() => replaceShot(null)}>
-              Ulangi
+              {t('Ulangi')}
             </button>
             <button type="button" className="btn-primary" onClick={handleUse}>
-              Pakai Foto
+              {t('Pakai Foto')}
             </button>
           </>
         ) : (
@@ -104,7 +106,7 @@ export function CameraCapture({ onCapture, onClose }) {
             onClick={handleShutter}
             disabled={!ready || busy}
           >
-            Ambil Foto
+            {t('Ambil Foto')}
           </button>
         )}
       </div>

@@ -4,6 +4,8 @@ import { formatRupiah, initials } from '../lib/format'
 import { getPeriodRange, formatPeriodLabel } from '../lib/dateRange'
 import { useAuth } from '../context/useAuth'
 import { isAdmin as checkIsAdmin } from '../lib/roles'
+import { useLanguage } from '../context/useLanguage'
+import { dateLocale } from '../lib/i18n'
 
 const PAYMENT_LABELS = { cash: 'Tunai', qris: 'QRIS', transfer: 'Transfer' }
 const PAYMENT_COLORS = { cash: '#2c6a9e', qris: '#7bb2d9', transfer: '#dce9f3' }
@@ -16,12 +18,13 @@ const WORKER_PERIOD_OPTIONS = [
 ]
 
 function dayLabel(date) {
-  const label = date.toLocaleDateString('id-ID', { weekday: 'short' })
+  const label = date.toLocaleDateString(dateLocale(), { weekday: 'short' })
   return label.charAt(0).toUpperCase() + label.slice(1, 3)
 }
 
 export default function Laporan() {
   const { profile } = useAuth()
+  const { t, language } = useLanguage()
   const isAdmin = checkIsAdmin(profile)
   const [last7, setLast7] = useState([])
   const [payments, setPayments] = useState([])
@@ -90,7 +93,9 @@ export default function Laporan() {
       heightPct: Math.round((d.revenue / max) * 100),
       isToday: d.key === todayKey,
     }))
-  }, [last7])
+    // language: the weekday labels are localized.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [last7, language])
 
   const paymentBreakdown = useMemo(() => {
     const totals = { cash: 0, qris: 0, transfer: 0 }
@@ -100,31 +105,31 @@ export default function Laporan() {
     const grandTotal = totals.cash + totals.qris + totals.transfer
     return Object.entries(totals).map(([method, amount]) => ({
       method,
-      label: PAYMENT_LABELS[method],
+      label: t(PAYMENT_LABELS[method]),
       color: PAYMENT_COLORS[method],
       amount,
       pct: grandTotal ? Math.round((amount / grandTotal) * 100) : 0,
     }))
-  }, [payments])
+  }, [payments, t])
 
-  if (loading) return <div className="loading-screen">Memuat...</div>
+  if (loading) return <div className="loading-screen">{t('Memuat...')}</div>
 
   return (
     <div className="laporan-screen">
-      <h1>Laporan Harian</h1>
-      {error && <p className="form-error">{error}</p>}
+      <h1>{t('Laporan Harian')}</h1>
+      {error && <p className="form-error">{t(error)}</p>}
 
       <div className="stat-cards">
         <div className="stat-card">
-          <span className="stat-card-label">Pendapatan Hari Ini</span>
+          <span className="stat-card-label">{t('Pendapatan Hari Ini')}</span>
           <span className="stat-card-value stat-card-value-accent">{formatRupiah(stats.revenue)}</span>
         </div>
         <div className="stat-card">
-          <span className="stat-card-label">Transaksi</span>
+          <span className="stat-card-label">{t('Transaksi')}</span>
           <span className="stat-card-value">{stats.count}</span>
         </div>
         <div className="stat-card">
-          <span className="stat-card-label">Rata-rata Transaksi</span>
+          <span className="stat-card-label">{t('Rata-rata Transaksi')}</span>
           <span className="stat-card-value">{formatRupiah(stats.avg)}</span>
         </div>
       </div>
@@ -132,7 +137,7 @@ export default function Laporan() {
       <div className="laporan-panels">
         {isAdmin && (
           <div className="laporan-panel laporan-chart">
-            <div className="laporan-panel-title">Pendapatan — 7 Hari Terakhir</div>
+            <div className="laporan-panel-title">{t('Pendapatan — 7 Hari Terakhir')}</div>
             <div className="rev-bars">
               {revBars.map((d) => (
                 <div key={d.key} className="rev-bar-col">
@@ -150,7 +155,7 @@ export default function Laporan() {
         )}
 
         <div className="laporan-panel laporan-payments">
-          <div className="laporan-panel-title">Metode Pembayaran</div>
+          <div className="laporan-panel-title">{t('Metode Pembayaran')}</div>
           <div className="payment-breakdown-bar">
             {paymentBreakdown.map((p) => (
               <div key={p.method} style={{ width: `${p.pct}%`, background: p.color }} />
@@ -170,23 +175,23 @@ export default function Laporan() {
       <div className="laporan-panel laporan-workers">
         <div className="laporan-panel-header">
           <div>
-            <div className="laporan-panel-title">Peringkat Pekerja</div>
+            <div className="laporan-panel-title">{t('Peringkat Pekerja')}</div>
             <p className="laporan-panel-subtitle">{formatPeriodLabel(effectiveWorkerPeriod)}</p>
           </div>
           {isAdmin && (
             <select value={workerPeriod} onChange={(e) => setWorkerPeriod(e.target.value)}>
               {WORKER_PERIOD_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
-                  {opt.label}
+                  {t(opt.label)}
                 </option>
               ))}
             </select>
           )}
         </div>
 
-        {workerLoading && <p className="riwayat-loading">Memuat...</p>}
+        {workerLoading && <p className="riwayat-loading">{t('Memuat...')}</p>}
         {!workerLoading && workerCounts.length === 0 && (
-          <p className="riwayat-empty">Belum ada transaksi dengan petugas tercatat pada periode ini</p>
+          <p className="riwayat-empty">{t('Belum ada transaksi dengan petugas tercatat pada periode ini')}</p>
         )}
         {!workerLoading && workerCounts.length > 0 && (
           <div className="worker-leaderboard">
@@ -204,10 +209,10 @@ export default function Laporan() {
                   <div className="worker-leaderboard-info">
                     <span className="worker-leaderboard-name">
                       {w.name}
-                      {isYou && <span className="worker-you-tag">Anda</span>}
+                      {isYou && <span className="worker-you-tag">{t('Anda')}</span>}
                     </span>
                     <span className="worker-leaderboard-sub">
-                      {w.washCount} Cuci · {w.qcCount} QC
+                      {t('{wash} Cuci · {qc} QC', { wash: w.washCount, qc: w.qcCount })}
                     </span>
                   </div>
                   <span className="worker-leaderboard-total">{w.total}</span>

@@ -6,6 +6,7 @@ import { formatRupiah, formatDateTime } from '../lib/format'
 import { getPeriodRange, formatPeriodLabel } from '../lib/dateRange'
 import { useAuth } from '../context/useAuth'
 import { isAdmin as checkIsAdmin } from '../lib/roles'
+import { useLanguage } from '../context/useLanguage'
 
 const PERIOD_OPTIONS = [
   { value: 'daily', label: 'Harian' },
@@ -36,20 +37,21 @@ const STATUS_LABELS = {
 // washed and QC'd the ticket, the wash-proof photo, and links on to the
 // receipt and the full treatment page. The photo is only fetched the first
 // time the row is opened, not for every row in the list.
-function RiwayatRow({ treatment: t, expanded, onToggle }) {
+function RiwayatRow({ treatment: row, expanded, onToggle }) {
+  const { t } = useLanguage()
   const [photoUrl, setPhotoUrl] = useState(null)
   const [photoState, setPhotoState] = useState('idle') // idle (not fetched yet) | done | error
 
   useEffect(() => {
     if (!expanded || photoState !== 'idle') return
-    getWashProofPhoto(t.id)
+    getWashProofPhoto(row.id)
       .then(async (path) => setPhotoUrl(path ? await getWashProofSignedUrl(path) : null))
       .then(() => setPhotoState('done'))
       .catch(() => setPhotoState('error'))
-  }, [expanded, photoState, t.id])
+  }, [expanded, photoState, row.id])
 
-  const washers = parseStaffNames(t.wash_staff)
-  const qcers = parseStaffNames(t.qc_staff)
+  const washers = parseStaffNames(row.wash_staff)
+  const qcers = parseStaffNames(row.qc_staff)
 
   return (
     <>
@@ -66,14 +68,14 @@ function RiwayatRow({ treatment: t, expanded, onToggle }) {
           }
         }}
       >
-        <span className="riwayat-service">{t.serviceSummary || '-'}</span>
-        <span>{t.treatment_type || '-'}</span>
-        <span>{formatDateTime(t.created_at)}</span>
-        <span className={`status-badge status-${t.status}`}>{STATUS_LABELS[t.status] || t.status}</span>
-        <span className={`status-badge ${t.isPaid ? 'status-closed' : 'status-created'}`}>
-          {t.isPaid ? 'Lunas' : 'Belum'}
+        <span className="riwayat-service">{row.serviceSummary || '-'}</span>
+        <span>{row.treatment_type || '-'}</span>
+        <span>{formatDateTime(row.created_at)}</span>
+        <span className={`status-badge status-${row.status}`}>{t(STATUS_LABELS[row.status] || row.status)}</span>
+        <span className={`status-badge ${row.isPaid ? 'status-closed' : 'status-created'}`}>
+          {row.isPaid ? t('Lunas') : t('Belum')}
         </span>
-        <span className="riwayat-total">{formatRupiah(t.total)}</span>
+        <span className="riwayat-total">{formatRupiah(row.total)}</span>
       </div>
       {expanded && (
         <div className="expand-wrap">
@@ -81,29 +83,31 @@ function RiwayatRow({ treatment: t, expanded, onToggle }) {
         <div className="riwayat-expand">
           <div className="riwayat-expand-info">
             <dl>
-              <dt>Plat</dt>
-              <dd>{t.plate_number || '-'}</dd>
-              <dt>Petugas Cuci</dt>
-              <dd>{washers.length ? washers.join(', ') : 'Belum ditugaskan'}</dd>
-              <dt>Petugas QC</dt>
-              <dd>{qcers.length ? qcers.join(', ') : 'Belum ditugaskan'}</dd>
+              <dt>{t('Plat')}</dt>
+              <dd>{row.plate_number || '-'}</dd>
+              <dt>{t('Petugas Cuci')}</dt>
+              <dd>{washers.length ? washers.join(', ') : t('Belum ditugaskan')}</dd>
+              <dt>{t('Petugas QC')}</dt>
+              <dd>{qcers.length ? qcers.join(', ') : t('Belum ditugaskan')}</dd>
             </dl>
             <div className="riwayat-expand-actions">
-              <Link to={`/struk/${t.id}`} className="btn-primary">
-                Lihat Struk
+              <Link to={`/struk/${row.id}`} className="btn-primary">
+                {t('Lihat Struk')}
               </Link>
-              <Link to={`/treatment/${t.id}`} className="btn-secondary">
-                Detail Transaksi
+              <Link to={`/treatment/${row.id}`} className="btn-secondary">
+                {t('Detail Transaksi')}
               </Link>
             </div>
           </div>
           <div className="riwayat-expand-photo">
-            {photoState === 'idle' &&<p className="riwayat-loading">Memuat foto...</p>}
-            {photoState === 'error' && <p className="form-error">Gagal memuat foto</p>}
-            {photoState === 'done' && !photoUrl && <p className="upah-breakdown-empty">Belum ada foto bukti cuci</p>}
+            {photoState === 'idle' && <p className="riwayat-loading">{t('Memuat foto...')}</p>}
+            {photoState === 'error' && <p className="form-error">{t('Gagal memuat foto')}</p>}
+            {photoState === 'done' && !photoUrl && (
+              <p className="upah-breakdown-empty">{t('Belum ada foto bukti cuci')}</p>
+            )}
             {photoUrl && (
               <a href={photoUrl} target="_blank" rel="noreferrer">
-                <img src={photoUrl} alt="Bukti foto cuci" className="riwayat-expand-image" />
+                <img src={photoUrl} alt={t('Bukti foto cuci')} className="riwayat-expand-image" />
               </a>
             )}
           </div>
@@ -117,6 +121,7 @@ function RiwayatRow({ treatment: t, expanded, onToggle }) {
 
 export default function RiwayatTransaksi() {
   const { profile } = useAuth()
+  const { t } = useLanguage()
   const isAdmin = checkIsAdmin(profile)
   const [treatments, setTreatments] = useState([])
   const [query, setQuery] = useState('')
@@ -217,29 +222,29 @@ export default function RiwayatTransaksi() {
   return (
     <div className="riwayat-screen">
       <div className="riwayat-header">
-        <h1>Riwayat Transaksi</h1>
+        <h1>{t('Riwayat Transaksi')}</h1>
         <form onSubmit={handleSearch} className="riwayat-search">
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Cari nomor plat..."
+            placeholder={t('Cari nomor plat...')}
           />
           <select
             value={paymentFilter}
             onChange={(e) => setPaymentFilter(e.target.value)}
-            aria-label="Filter metode pembayaran"
+            aria-label={t('Filter metode pembayaran')}
           >
             {PAYMENT_FILTER_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
-                {opt.label}
+                {t(opt.label)}
               </option>
             ))}
           </select>
-          <button type="submit">Cari</button>
+          <button type="submit">{t('Cari')}</button>
         </form>
       </div>
       {!isAdmin && (
-        <p className="riwayat-scope-note">Pencarian dan riwayat hanya menampilkan transaksi hari ini.</p>
+        <p className="riwayat-scope-note">{t('Pencarian dan riwayat hanya menampilkan transaksi hari ini.')}</p>
       )}
 
       {isAdmin && (
@@ -247,15 +252,15 @@ export default function RiwayatTransaksi() {
           <select value={period} onChange={(e) => setPeriod(e.target.value)}>
             {PERIOD_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
-                {opt.label}
+                {t(opt.label)}
               </option>
             ))}
           </select>
           <button type="button" className="btn-secondary" onClick={() => handleExport('pdf')} disabled={!!exporting}>
-            {exporting === 'pdf' ? 'Membuat PDF...' : 'Unduh PDF'}
+            {exporting === 'pdf' ? t('Membuat PDF...') : t('Unduh PDF')}
           </button>
           <button type="button" className="btn-secondary" onClick={() => handleExport('csv')} disabled={!!exporting}>
-            {exporting === 'csv' ? 'Membuat Excel...' : 'Unduh Excel (CSV)'}
+            {exporting === 'csv' ? t('Membuat Excel...') : t('Unduh Excel (CSV)')}
           </button>
           <span className="riwayat-period-label">{formatPeriodLabel(period)}</span>
         </div>
@@ -264,44 +269,44 @@ export default function RiwayatTransaksi() {
       {!isFiltered && (
         <div className="stat-cards">
           <div className="stat-card">
-            <span className="stat-card-label">{isAdmin ? 'Jumlah Transaksi' : 'Transaksi Hari Ini'}</span>
+            <span className="stat-card-label">{isAdmin ? t('Jumlah Transaksi') : t('Transaksi Hari Ini')}</span>
             <span className="stat-card-value">{stats.count}</span>
           </div>
           <div className="stat-card">
-            <span className="stat-card-label">{isAdmin ? 'Pendapatan' : 'Pendapatan Hari Ini'}</span>
+            <span className="stat-card-label">{isAdmin ? t('Pendapatan') : t('Pendapatan Hari Ini')}</span>
             <span className="stat-card-value stat-card-value-accent">{formatRupiah(stats.revenue)}</span>
           </div>
           <div className="stat-card">
-            <span className="stat-card-label">Rata-rata Transaksi</span>
+            <span className="stat-card-label">{t('Rata-rata Transaksi')}</span>
             <span className="stat-card-value">{formatRupiah(stats.avg)}</span>
           </div>
         </div>
       )}
 
-      {error && <p className="form-error">{error}</p>}
-      {loading && <p className="riwayat-loading">Memuat...</p>}
+      {error && <p className="form-error">{t(error)}</p>}
+      {loading && <p className="riwayat-loading">{t('Memuat...')}</p>}
 
       {!loading && visibleTreatments.length > 0 && (
         <div className="riwayat-table">
           <div className="riwayat-table-row riwayat-table-head">
-            <span>Layanan</span>
-            <span>Merek</span>
-            <span>Waktu</span>
-            <span>Status</span>
-            <span>Bayar</span>
-            <span>Total</span>
+            <span>{t('Layanan')}</span>
+            <span>{t('Merek')}</span>
+            <span>{t('Waktu')}</span>
+            <span>{t('Status')}</span>
+            <span>{t('Bayar')}</span>
+            <span>{t('Total')}</span>
           </div>
-          {visibleTreatments.map((t) => (
+          {visibleTreatments.map((row) => (
             <RiwayatRow
-              key={t.id}
-              treatment={t}
-              expanded={expandedId === t.id}
-              onToggle={() => setExpandedId((id) => (id === t.id ? null : t.id))}
+              key={row.id}
+              treatment={row}
+              expanded={expandedId === row.id}
+              onToggle={() => setExpandedId((id) => (id === row.id ? null : row.id))}
             />
           ))}
         </div>
       )}
-      {!loading && visibleTreatments.length === 0 && <p className="riwayat-empty">Tidak ada transaksi</p>}
+      {!loading && visibleTreatments.length === 0 && <p className="riwayat-empty">{t('Tidak ada transaksi')}</p>}
     </div>
   )
 }

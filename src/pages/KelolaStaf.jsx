@@ -3,6 +3,7 @@ import { getAllWorkers, createWorker, createWorkerLogin, updateWorker, setWorker
 import { suggestUsername, isValidUsername } from '../lib/username'
 import { useAuth } from '../context/useAuth'
 import { ROLES, ROLE_LABELS, isAdmin } from '../lib/roles'
+import { useLanguage } from '../context/useLanguage'
 
 // One roster since migration 009: field workers and office staff are all
 // rows in `profiles` now. What separates them is `role` (what they can open)
@@ -10,6 +11,7 @@ import { ROLES, ROLE_LABELS, isAdmin } from '../lib/roles'
 // live in.
 export default function KelolaStaf() {
   const { profile: currentProfile } = useAuth()
+  const { t } = useLanguage()
   const [workers, setWorkers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -26,7 +28,7 @@ export default function KelolaStaf() {
     getAllWorkers().then(setWorkers)
   }
 
-  if (loading) return <div className="loading-screen">Memuat...</div>
+  if (loading) return <div className="loading-screen">{t('Memuat...')}</div>
 
   // Admin accounts (including whoever's currently logged in) are never
   // editable from this page — no self-lockout, no one admin quietly
@@ -36,8 +38,8 @@ export default function KelolaStaf() {
 
   return (
     <div className="staf-screen">
-      <h1>Kelola Staf</h1>
-      {error && <p className="form-error">{error}</p>}
+      <h1>{t('Kelola Staf')}</h1>
+      {error && <p className="form-error">{t(error)}</p>}
 
       <StaffSection workers={manageableWorkers} onChanged={reload} onError={setError} />
     </div>
@@ -45,6 +47,7 @@ export default function KelolaStaf() {
 }
 
 function StaffSection({ workers, onChanged, onError }) {
+  const { t } = useLanguage()
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [busyId, setBusyId] = useState(null)
@@ -66,9 +69,9 @@ function StaffSection({ workers, onChanged, onError }) {
   return (
     <section className="staf-section">
       <div className="staf-section-header">
-        <h2 className="transaksi-section-label">Staf</h2>
+        <h2 className="transaksi-section-label">{t('Staf')}</h2>
         <button type="button" className="btn-primary" onClick={() => setShowAddForm((v) => !v)}>
-          {showAddForm ? 'Tutup' : '+ Tambah Staf'}
+          {showAddForm ? t('Tutup') : `+ ${t('Tambah Staf')}`}
         </button>
       </div>
 
@@ -95,15 +98,15 @@ function StaffSection({ workers, onChanged, onError }) {
       )}
 
       {workers.length === 0 ? (
-        <p className="riwayat-empty">Belum ada staf</p>
+        <p className="riwayat-empty">{t('Belum ada staf')}</p>
       ) : (
         <div className="riwayat-table staf-table">
           <div className="riwayat-table-row riwayat-table-head">
-            <span>Nama</span>
-            <span>Telepon</span>
-            <span>Peran</span>
-            <span>Akun</span>
-            <span>Status</span>
+            <span>{t('Nama')}</span>
+            <span>{t('Telepon')}</span>
+            <span>{t('Peran')}</span>
+            <span>{t('Akun')}</span>
+            <span>{t('Status')}</span>
             <span></span>
           </div>
           {workers.map((w) =>
@@ -122,14 +125,14 @@ function StaffSection({ workers, onChanged, onError }) {
               <div key={w.id} className="riwayat-table-row">
                 <span className="riwayat-plate">{w.full_name}</span>
                 <span>{w.phone || '-'}</span>
-                <span>{ROLE_LABELS[w.role] || w.role}</span>
-                <span className="staf-username">{w.username || 'Tanpa akun'}</span>
+                <span>{t(ROLE_LABELS[w.role] || w.role)}</span>
+                <span className="staf-username">{w.username || t('Tanpa akun')}</span>
                 <span className={`status-badge ${w.is_active ? 'status-closed' : 'status-voided'}`}>
-                  {w.is_active ? 'Aktif' : 'Nonaktif'}
+                  {w.is_active ? t('Aktif') : t('Nonaktif')}
                 </span>
                 <span className="staf-row-actions">
                   <button type="button" className="btn-secondary" onClick={() => setEditingId(w.id)}>
-                    Edit
+                    {t('Edit')}
                   </button>
                   {!w.username && (
                     <button
@@ -137,7 +140,7 @@ function StaffSection({ workers, onChanged, onError }) {
                       className="btn-secondary"
                       onClick={() => setAccountFor(w)}
                     >
-                      Buat Akun
+                      {t('Buat Akun')}
                     </button>
                   )}
                   <button
@@ -146,7 +149,7 @@ function StaffSection({ workers, onChanged, onError }) {
                     onClick={() => handleToggleActive(w)}
                     disabled={busyId === w.id}
                   >
-                    {w.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                    {w.is_active ? t('Nonaktifkan') : t('Aktifkan')}
                   </button>
                 </span>
               </div>
@@ -164,6 +167,7 @@ function StaffSection({ workers, onChanged, onError }) {
 // user's login without hijacking the current session. Leave it unticked for
 // someone who only needs to be assignable as wash/QC staff.
 function AddStaffForm({ onCreated, onError }) {
+  const { t } = useLanguage()
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [role, setRole] = useState(ROLES.STAFF)
@@ -219,21 +223,21 @@ function AddStaffForm({ onCreated, onError }) {
 
   return (
     <form className="payment-form staf-form" onSubmit={handleSubmit}>
-      <div className="payment-form-title">Tambah Staf</div>
+      <div className="payment-form-title">{t('Tambah Staf')}</div>
       <div className="staf-form-grid">
         <label>
-          Nama Lengkap
-          <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nama staf" />
+          {t('Nama Lengkap')}
+          <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t('Nama staf')} />
         </label>
         <label>
-          Telepon (opsional)
+          {t('Telepon (opsional)')}
           <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08xxxxxxxxxx" />
         </label>
         <label>
-          Peran
+          {t('Peran')}
           <select value={role} onChange={(e) => setRole(e.target.value)}>
-            <option value={ROLES.STAFF}>{ROLE_LABELS[ROLES.STAFF]}</option>
-            <option value={ROLES.SUPERVISOR}>{ROLE_LABELS[ROLES.SUPERVISOR]}</option>
+            <option value={ROLES.STAFF}>{t(ROLE_LABELS[ROLES.STAFF])}</option>
+            <option value={ROLES.SUPERVISOR}>{t(ROLE_LABELS[ROLES.SUPERVISOR])}</option>
           </select>
         </label>
       </div>
@@ -244,7 +248,7 @@ function AddStaffForm({ onCreated, onError }) {
           checked={withLogin}
           onChange={(e) => setWithLogin(e.target.checked)}
         />
-        <span>Buat akun login (bisa masuk ke dashboard)</span>
+        <span>{t('Buat akun login (bisa masuk ke dashboard)')}</span>
       </label>
 
       {withLogin && (
@@ -260,7 +264,7 @@ function AddStaffForm({ onCreated, onError }) {
       )}
 
       <button type="submit" className="btn-primary payment-form-trigger" disabled={submitting}>
-        {submitting ? 'Menyimpan...' : 'Simpan Staf'}
+        {submitting ? t('Menyimpan...') : t('Simpan Staf')}
       </button>
     </form>
   )
@@ -270,6 +274,7 @@ function AddStaffForm({ onCreated, onError }) {
 // their wash/QC history). Name, phone and role come from the row as it
 // stands; only the credentials are new.
 function CreateLoginForm({ worker, onCreated, onCancel, onError }) {
+  const { t } = useLanguage()
   const [username, setUsername] = useState(suggestUsername(worker.full_name))
   const [pin, setPin] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -306,7 +311,7 @@ function CreateLoginForm({ worker, onCreated, onCancel, onError }) {
 
   return (
     <form className="payment-form staf-form" onSubmit={handleSubmit}>
-      <div className="payment-form-title">Buat Akun — {worker.full_name}</div>
+      <div className="payment-form-title">{t('Buat Akun — {name}', { name: worker.full_name })}</div>
       <LoginFields
         username={username}
         onUsernameChange={setUsername}
@@ -315,10 +320,10 @@ function CreateLoginForm({ worker, onCreated, onCancel, onError }) {
       />
       <div className="staf-row-actions">
         <button type="button" className="btn-secondary" onClick={onCancel} disabled={submitting}>
-          Batal
+          {t('Batal')}
         </button>
         <button type="submit" className="btn-primary" disabled={submitting}>
-          {submitting ? 'Membuat...' : 'Buat Akun'}
+          {submitting ? t('Membuat...') : t('Buat Akun')}
         </button>
       </div>
     </form>
@@ -327,21 +332,22 @@ function CreateLoginForm({ worker, onCreated, onCancel, onError }) {
 
 // Shared by both forms so the two never drift apart on validation or wording.
 function LoginFields({ username, onUsernameChange, pin, onPinChange }) {
+  const { t } = useLanguage()
   return (
     <>
       <div className="staf-form-grid">
         <label>
-          Username
+          {t('Username')}
           <input
             value={username}
             onChange={(e) => onUsernameChange(e.target.value.toLowerCase())}
-            placeholder="nama.staf"
+            placeholder={t('nama.staf')}
             autoCapitalize="none"
             autoCorrect="off"
           />
         </label>
         <label>
-          PIN (6 digit)
+          {t('PIN (6 digit)')}
           <input
             type="password"
             value={pin}
@@ -353,8 +359,7 @@ function LoginFields({ username, onUsernameChange, pin, onPinChange }) {
         </label>
       </div>
       <p className="staf-section-note">
-        Username tidak bisa diubah setelah akun dibuat. Serahkan PIN langsung ke orangnya, dan
-        jangan pakai PIN yang sama untuk dua orang.
+        {t('Username tidak bisa diubah setelah akun dibuat. Serahkan PIN langsung ke orangnya, dan jangan pakai PIN yang sama untuk dua orang.')}
       </p>
     </>
   )
@@ -366,6 +371,7 @@ function LoginFields({ username, onUsernameChange, pin, onPinChange }) {
 // one admin can't quietly mint another. Username isn't editable: it's tied to
 // the Auth account's email address, which only the server can change.
 function EditStaffRow({ worker, onSaved, onCancel, onError }) {
+  const { t } = useLanguage()
   const [fullName, setFullName] = useState(worker.full_name)
   const [phone, setPhone] = useState(worker.phone || '')
   const [role, setRole] = useState(worker.role)
@@ -401,19 +407,19 @@ function EditStaffRow({ worker, onSaved, onCancel, onError }) {
         value={role}
         onChange={(e) => setRole(e.target.value)}
         disabled={submitting}
-        aria-label="Peran"
+        aria-label={t('Peran')}
       >
-        <option value={ROLES.STAFF}>{ROLE_LABELS[ROLES.STAFF]}</option>
-        <option value={ROLES.SUPERVISOR}>{ROLE_LABELS[ROLES.SUPERVISOR]}</option>
+        <option value={ROLES.STAFF}>{t(ROLE_LABELS[ROLES.STAFF])}</option>
+        <option value={ROLES.SUPERVISOR}>{t(ROLE_LABELS[ROLES.SUPERVISOR])}</option>
       </select>
-      <span className="staf-username">{worker.username || 'Tanpa akun'}</span>
+      <span className="staf-username">{worker.username || t('Tanpa akun')}</span>
       <span />
       <span className="staf-row-actions">
         <button type="button" className="btn-secondary" onClick={onCancel} disabled={submitting}>
-          Batal
+          {t('Batal')}
         </button>
         <button type="button" className="btn-primary" onClick={handleSave} disabled={submitting}>
-          Simpan
+          {t('Simpan')}
         </button>
       </span>
     </div>

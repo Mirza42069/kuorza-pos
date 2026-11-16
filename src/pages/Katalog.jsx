@@ -12,9 +12,11 @@ import { groupServicesByCategory } from '../lib/serviceCategories'
 import { ServiceIcon } from '../components/ServiceIcon'
 import { useAuth } from '../context/useAuth'
 import { isSupervisor } from '../lib/roles'
+import { useLanguage } from '../context/useLanguage'
 
 export default function Katalog() {
   const { profile } = useAuth()
+  const { t } = useLanguage()
   const canManageStock = isSupervisor(profile)
   const [services, setServices] = useState([])
   const [shelfItems, setShelfItems] = useState([])
@@ -41,10 +43,10 @@ export default function Katalog() {
 
   return (
     <div className="katalog-screen">
-      <h1>Katalog</h1>
+      <h1>{t('Katalog')}</h1>
 
-      {error && <p className="form-error">{error}</p>}
-      {loading && <p className="riwayat-loading">Memuat...</p>}
+      {error && <p className="form-error">{t(error)}</p>}
+      {loading && <p className="riwayat-loading">{t('Memuat...')}</p>}
 
       {!loading && (
         <>
@@ -72,6 +74,7 @@ export default function Katalog() {
 // Same collapsible sections as the Transaksi Baru picker: one category open
 // at a time, the first one open to start.
 function ServiceSection({ services, canManagePromo, onChanged, onError }) {
+  const { t } = useLanguage()
   const groups = groupServicesByCategory(services)
   // undefined = untouched, so the first category starts open;
   // null = the user closed everything.
@@ -80,14 +83,14 @@ function ServiceSection({ services, canManagePromo, onChanged, onError }) {
 
   return (
     <section className="katalog-section">
-      <h2 className="transaksi-section-label">Layanan</h2>
+      <h2 className="transaksi-section-label">{t('Layanan')}</h2>
       <p className="katalog-note">
         {canManagePromo
-          ? 'Harga promo bisa diubah di sini. Kosongkan lalu simpan untuk mengakhiri promo. Nama dan harga normal dikelola lewat dashboard Supabase.'
-          : 'Untuk menambah atau mengubah layanan, hubungi admin — dikelola lewat dashboard Supabase.'}
+          ? t('Harga promo bisa diubah di sini. Kosongkan lalu simpan untuk mengakhiri promo. Nama dan harga normal dikelola lewat dashboard Supabase.')
+          : t('Untuk menambah atau mengubah layanan, hubungi admin — dikelola lewat dashboard Supabase.')}
       </p>
       {services.length === 0 ? (
-        <p className="riwayat-empty">Belum ada layanan aktif</p>
+        <p className="riwayat-empty">{t('Belum ada layanan aktif')}</p>
       ) : (
         <div className="service-category-list">
           {groups.map((group) => {
@@ -102,8 +105,10 @@ function ServiceSection({ services, canManagePromo, onChanged, onError }) {
                   aria-controls={panelId}
                   onClick={() => setOpenKey(isOpen ? null : group.key)}
                 >
-                  <span className="service-category-label">{group.label}</span>
-                  <span className="service-category-meta">{group.services.length} layanan</span>
+                  <span className="service-category-label">{t(group.label)}</span>
+                  <span className="service-category-meta">
+                    {t('{count} layanan', { count: group.services.length })}
+                  </span>
                   <span className="service-category-chevron" aria-hidden="true" />
                 </button>
 
@@ -115,9 +120,9 @@ function ServiceSection({ services, canManagePromo, onChanged, onError }) {
                     }`}
                   >
                     <div className="riwayat-table-row riwayat-table-head">
-                      <span>Nama Layanan</span>
-                      <span>Harga Normal</span>
-                      <span>Harga Promo</span>
+                      <span>{t('Nama Layanan')}</span>
+                      <span>{t('Harga Normal')}</span>
+                      <span>{t('Harga Promo')}</span>
                       {canManagePromo && <span></span>}
                     </div>
                     {group.services.map((service) => (
@@ -151,6 +156,7 @@ function ServiceSection({ services, canManagePromo, onChanged, onError }) {
 // The RPC re-checks everything below (supervisor, > 0, < normal price); the
 // client-side checks are just for a friendlier message.
 function PromoPriceEditor({ service, onChanged, onError }) {
+  const { t } = useLanguage()
   const [value, setValue] = useState(service.promo_price != null ? String(Number(service.promo_price)) : '')
   const [busy, setBusy] = useState(false)
 
@@ -185,12 +191,12 @@ function PromoPriceEditor({ service, onChanged, onError }) {
         inputMode="numeric"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Promo"
-        aria-label={`Harga promo ${service.name}`}
+        placeholder={t('Promo')}
+        aria-label={t('Harga promo {name}', { name: service.name })}
         disabled={busy}
       />
       <button type="button" className="btn-secondary" onClick={handleSave} disabled={busy}>
-        Simpan
+        {t('Simpan')}
       </button>
     </span>
   )
@@ -199,22 +205,23 @@ function PromoPriceEditor({ service, onChanged, onError }) {
 // Barang: goods with finite stock. Everyone sees the shelf and what's left on
 // it; only supervisors can add an item or move the stock figure.
 function ShelfSection({ items, canManageStock, onChanged, onError }) {
+  const { t } = useLanguage()
   const [showAddForm, setShowAddForm] = useState(false)
 
   return (
     <section className="katalog-section">
       <div className="staf-section-header">
-        <h2 className="transaksi-section-label">Barang</h2>
+        <h2 className="transaksi-section-label">{t('Barang')}</h2>
         {canManageStock && (
           <button type="button" className="btn-primary" onClick={() => setShowAddForm((v) => !v)}>
-            {showAddForm ? 'Tutup' : '+ Tambah Barang'}
+            {showAddForm ? t('Tutup') : `+ ${t('Tambah Barang')}`}
           </button>
         )}
       </div>
       <p className="katalog-note">
         {canManageStock
-          ? 'Stok berkurang otomatis setiap barang terjual di transaksi.'
-          : 'Stok hanya bisa diubah oleh supervisor.'}
+          ? t('Stok berkurang otomatis setiap barang terjual di transaksi.')
+          : t('Stok hanya bisa diubah oleh supervisor.')}
       </p>
 
       {showAddForm && (
@@ -228,13 +235,13 @@ function ShelfSection({ items, canManageStock, onChanged, onError }) {
       )}
 
       {items.length === 0 ? (
-        <p className="riwayat-empty">Belum ada barang</p>
+        <p className="riwayat-empty">{t('Belum ada barang')}</p>
       ) : (
         <div className={`riwayat-table katalog-table ${canManageStock ? 'katalog-shelf-managed' : 'katalog-shelf'}`}>
           <div className="riwayat-table-row riwayat-table-head">
-            <span>Nama Barang</span>
-            <span>Harga</span>
-            <span>Stok</span>
+            <span>{t('Nama Barang')}</span>
+            <span>{t('Harga')}</span>
+            <span>{t('Stok')}</span>
             {canManageStock && <span></span>}
           </div>
           {items.map((item) => (
@@ -242,7 +249,7 @@ function ShelfSection({ items, canManageStock, onChanged, onError }) {
               <span className="riwayat-plate">{item.name}</span>
               <span className="riwayat-total">{formatRupiah(item.price)}</span>
               <span className={`status-badge ${item.stock > 0 ? 'status-closed' : 'status-voided'}`}>
-                {item.stock > 0 ? `${item.stock} tersedia` : 'Habis'}
+                {item.stock > 0 ? t('{count} tersedia', { count: item.stock }) : t('Habis')}
               </span>
               {canManageStock && (
                 <StockAdjuster item={item} onChanged={onChanged} onError={onError} />
@@ -259,6 +266,7 @@ function ShelfSection({ items, canManageStock, onChanged, onError }) {
 // two supervisors restocking at once both count. Negative values are allowed
 // as a correction (a breakage, a miscount).
 function StockAdjuster({ item, onChanged, onError }) {
+  const { t } = useLanguage()
   const [amount, setAmount] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -288,17 +296,18 @@ function StockAdjuster({ item, onChanged, onError }) {
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
         placeholder="+/-"
-        aria-label={`Ubah stok ${item.name}`}
+        aria-label={t('Ubah stok {name}', { name: item.name })}
         disabled={busy}
       />
       <button type="button" className="btn-secondary" onClick={handleAdd} disabled={busy}>
-        Ubah Stok
+        {t('Ubah Stok')}
       </button>
     </span>
   )
 }
 
 function AddShelfItemForm({ onCreated, onError }) {
+  const { t } = useLanguage()
   const [name, setName] = useState('')
   const [price, setPrice] = useState('')
   const [stock, setStock] = useState('')
@@ -338,14 +347,14 @@ function AddShelfItemForm({ onCreated, onError }) {
 
   return (
     <form className="payment-form staf-form" onSubmit={handleSubmit}>
-      <div className="payment-form-title">Tambah Barang</div>
+      <div className="payment-form-title">{t('Tambah Barang')}</div>
       <div className="staf-form-grid">
         <label>
-          Nama Barang
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contoh: Parfum Mobil" />
+          {t('Nama Barang')}
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('Contoh: Parfum Mobil')} />
         </label>
         <label>
-          Harga
+          {t('Harga')}
           <input
             type="number"
             min="0"
@@ -356,7 +365,7 @@ function AddShelfItemForm({ onCreated, onError }) {
           />
         </label>
         <label>
-          Stok Awal
+          {t('Stok Awal')}
           <input
             type="number"
             min="0"
@@ -368,7 +377,7 @@ function AddShelfItemForm({ onCreated, onError }) {
         </label>
       </div>
       <button type="submit" className="btn-primary payment-form-trigger" disabled={submitting}>
-        {submitting ? 'Menyimpan...' : 'Simpan Barang'}
+        {submitting ? t('Menyimpan...') : t('Simpan Barang')}
       </button>
     </form>
   )

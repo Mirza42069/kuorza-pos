@@ -1,9 +1,12 @@
+import { dateLocale } from './i18n'
+
+// Money stays in Indonesian format ("Rp 15.000") in every UI language.
 export function formatRupiah(amount) {
   return `Rp ${Number(amount).toLocaleString('id-ID')}`
 }
 
 export function formatDateTime(value) {
-  return new Date(value).toLocaleString('id-ID', {
+  return new Date(value).toLocaleString(dateLocale(), {
     dateStyle: 'medium',
     timeStyle: 'short',
   })

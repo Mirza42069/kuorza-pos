@@ -1,4 +1,5 @@
 import { formatDateTime } from './format'
+import { translate as t, dateLocale } from './i18n'
 
 const STATUS_LABELS = {
   created: 'Dibuat',
@@ -12,6 +13,7 @@ const STATUS_LABELS = {
 
 const PAYMENT_LABELS = { cash: 'Tunai', qris: 'QRIS', transfer: 'Transfer' }
 
+// Labels are Indonesian keys, translated when the file is built.
 const HEADER = [
   'Bulan',
   'Tanggal',
@@ -44,7 +46,7 @@ function monthKey(d) {
 }
 
 function monthLabel(d) {
-  return d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
+  return d.toLocaleDateString(dateLocale(), { month: 'long', year: 'numeric' })
 }
 
 function escapeCell(value) {
@@ -55,16 +57,16 @@ function escapeCell(value) {
 // Revenue counts the same thing the PDF does: paid, non-voided tickets.
 function revenueOf(treatments) {
   return treatments
-    .filter((t) => t.status !== 'voided' && t.isPaid)
-    .reduce((sum, t) => sum + Number(t.total || 0), 0)
+    .filter((row) => row.status !== 'voided' && row.isPaid)
+    .reduce((sum, row) => sum + Number(row.total || 0), 0)
 }
 
 function summaryRow(label, treatments) {
-  const row = new Array(HEADER.length).fill('')
-  row[1] = label
-  row[3] = `${treatments.length} transaksi`
-  row[HEADER.length - 1] = revenueOf(treatments)
-  return row
+  const cells = new Array(HEADER.length).fill('')
+  cells[1] = label
+  cells[3] = t('{count} transaksi', { count: treatments.length })
+  cells[HEADER.length - 1] = revenueOf(treatments)
+  return cells
 }
 
 // Rows run oldest-first, grouped by month and then by day, with a subtotal
@@ -75,54 +77,54 @@ export function exportTreatmentsToCsv(treatments, periodLabel) {
   const sorted = [...treatments].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
 
   const months = new Map()
-  for (const t of sorted) {
-    const created = new Date(t.created_at)
+  for (const treatment of sorted) {
+    const created = new Date(treatment.created_at)
     const mKey = monthKey(created)
     if (!months.has(mKey)) months.set(mKey, { label: monthLabel(created), days: new Map() })
     const days = months.get(mKey).days
     const dKey = dateKey(created)
     if (!days.has(dKey)) days.set(dKey, [])
-    days.get(dKey).push(t)
+    days.get(dKey).push(treatment)
   }
 
   const rows = [
-    ['Nineteen Details - Riwayat Transaksi'],
-    ['Periode', periodLabel],
-    ['Dibuat', formatDateTime(new Date())],
+    [`Nineteen Details - ${t('Riwayat Transaksi')}`],
+    [t('Periode'), periodLabel],
+    [t('Dibuat'), formatDateTime(new Date())],
     [],
-    HEADER,
+    HEADER.map((label) => t(label)),
   ]
 
   for (const { label, days } of months.values()) {
     const monthTreatments = []
     for (const [dKey, dayTreatments] of days) {
-      for (const t of dayTreatments) {
-        const created = new Date(t.created_at)
+      for (const row of dayTreatments) {
+        const created = new Date(row.created_at)
         rows.push([
           label,
           dKey,
           `${pad(created.getHours())}:${pad(created.getMinutes())}`,
-          t.treatment_code,
-          t.plate_number || '-',
-          t.treatment_type || '-',
-          t.customer_name || '-',
-          t.serviceSummary || '-',
-          STATUS_LABELS[t.status] || t.status,
-          t.isPaid ? 'Lunas' : 'Belum',
-          (t.payments ?? []).map((p) => PAYMENT_LABELS[p.payment_method] || p.payment_method).join(', ') || '-',
-          Number(t.subtotal || 0),
-          Number(t.discount || 0),
-          Number(t.total || 0),
+          row.treatment_code,
+          row.plate_number || '-',
+          row.treatment_type || '-',
+          row.customer_name || '-',
+          row.serviceSummary || '-',
+          t(STATUS_LABELS[row.status] || row.status),
+          row.isPaid ? t('Lunas') : t('Belum'),
+          (row.payments ?? []).map((p) => t(PAYMENT_LABELS[p.payment_method] || p.payment_method)).join(', ') || '-',
+          Number(row.subtotal || 0),
+          Number(row.discount || 0),
+          Number(row.total || 0),
         ])
       }
-      rows.push(summaryRow(`Subtotal ${dKey}`, dayTreatments))
+      rows.push(summaryRow(`${t('Subtotal')} ${dKey}`, dayTreatments))
       monthTreatments.push(...dayTreatments)
     }
-    rows.push(summaryRow(`Total ${label}`, monthTreatments))
+    rows.push(summaryRow(`${t('Total')} ${label}`, monthTreatments))
     rows.push([])
   }
 
-  rows.push(summaryRow('Total Keseluruhan', sorted))
+  rows.push(summaryRow(t('Total Keseluruhan'), sorted))
 
   // "sep=," makes Excel split on commas whatever the machine's regional list
   // separator is — Indonesian-locale Excel otherwise expects semicolons and

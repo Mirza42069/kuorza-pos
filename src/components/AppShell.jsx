@@ -6,6 +6,9 @@ import { useAuth } from '../context/useAuth'
 import { useTheme } from '../context/useTheme'
 import { isAdmin, isStaff, isSupervisor, ROLE_LABELS } from '../lib/roles'
 import { WorkerShell } from './WorkerShell'
+import { LanguageToggle } from './LanguageToggle'
+import { useLanguage } from '../context/useLanguage'
+import { dateLocale } from '../lib/i18n'
 
 // `access` mirrors the route guards in App.jsx — keep the two in step, since
 // this only decides what's shown and the guards decide what's reachable.
@@ -20,7 +23,7 @@ const NAV_ITEMS = [
 ]
 
 function todayLabel() {
-  const label = new Date().toLocaleDateString('id-ID', {
+  const label = new Date().toLocaleDateString(dateLocale(), {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -31,6 +34,7 @@ function todayLabel() {
 export function AppShell() {
   const { profile, setProfile } = useAuth()
   const { theme, toggleTheme } = useTheme()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const [navOpen, setNavOpen] = useState(false)
 
@@ -72,7 +76,7 @@ export function AppShell() {
               className={({ isActive }) => `app-sidebar-link ${isActive ? 'active' : ''}`}
             >
               <span className="app-sidebar-link-dot" />
-              <span>{item.label}</span>
+              <span>{t(item.label)}</span>
             </NavLink>
           ))}
         </nav>
@@ -84,7 +88,7 @@ export function AppShell() {
               type="button"
               className="app-hamburger"
               onClick={() => setNavOpen((open) => !open)}
-              aria-label={navOpen ? 'Tutup menu' : 'Buka menu'}
+              aria-label={navOpen ? t('Tutup menu') : t('Buka menu')}
               aria-expanded={navOpen}
             >
               <span />
@@ -92,12 +96,13 @@ export function AppShell() {
             <span className="app-header-date">{todayLabel()}</span>
           </div>
           <div className="app-header-right">
+            <LanguageToggle />
             <button
               type="button"
               className="theme-toggle-btn"
               onClick={toggleTheme}
-              title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
-              aria-label={theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'}
+              title={theme === 'dark' ? t('Mode Terang') : t('Mode Gelap')}
+              aria-label={theme === 'dark' ? t('Aktifkan mode terang') : t('Aktifkan mode gelap')}
             >
               {theme === 'dark' ? '☀️' : '🌙'}
             </button>
@@ -105,9 +110,9 @@ export function AppShell() {
               <div className="app-header-user">
                 <span className="app-header-avatar">{initials(profile.full_name)}</span>
                 <span className="app-header-name">{profile.full_name}</span>
-                <span className="app-header-role">{ROLE_LABELS[profile.role] || profile.role}</span>
+                <span className="app-header-role">{t(ROLE_LABELS[profile.role] || profile.role)}</span>
                 <button type="button" className="app-header-logout" onClick={handleLogout}>
-                  Keluar
+                  {t('Keluar')}
                 </button>
               </div>
             )}

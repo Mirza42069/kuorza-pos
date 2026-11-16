@@ -3,6 +3,8 @@ import { logout } from '../api'
 import { initials } from '../lib/format'
 import { useAuth } from '../context/useAuth'
 import { useTheme } from '../context/useTheme'
+import { useLanguage } from '../context/useLanguage'
+import { LanguageToggle } from './LanguageToggle'
 
 // The phone shell for role='staff' — the people on the floor, who work off a
 // handset rather than the counter machine. Same routes and same pages as the
@@ -44,6 +46,7 @@ function screenTitle(pathname) {
 export function WorkerShell() {
   const { profile, setProfile } = useAuth()
   const { theme, toggleTheme } = useTheme()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const { pathname } = useLocation()
 
@@ -61,15 +64,16 @@ export function WorkerShell() {
       <header className="worker-topbar">
         <div className="worker-topbar-left">
           <img src="/favicon.png" alt="Kuorza" className="app-sidebar-brand-mark" />
-          <span className="worker-topbar-title">{screenTitle(pathname)}</span>
+          <span className="worker-topbar-title">{t(screenTitle(pathname))}</span>
         </div>
         <div className="worker-topbar-right">
+          <LanguageToggle className="language-toggle-compact" />
           <button
             type="button"
             className="theme-toggle-btn"
             onClick={toggleTheme}
-            title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
-            aria-label={theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'}
+            title={theme === 'dark' ? t('Mode Terang') : t('Mode Gelap')}
+            aria-label={theme === 'dark' ? t('Aktifkan mode terang') : t('Aktifkan mode gelap')}
           >
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
@@ -81,8 +85,8 @@ export function WorkerShell() {
               type="button"
               className="worker-avatar"
               onClick={handleLogout}
-              title={`${profile.full_name} — ketuk untuk keluar`}
-              aria-label={`Keluar dari akun ${profile.full_name}`}
+              title={t('{name} — ketuk untuk keluar', { name: profile.full_name })}
+              aria-label={t('Keluar dari akun {name}', { name: profile.full_name })}
             >
               {initials(profile.full_name)}
             </button>
@@ -111,7 +115,7 @@ export function WorkerShell() {
             >
               {item.icon}
             </svg>
-            <span className="worker-tab-label">{item.label}</span>
+            <span className="worker-tab-label">{t(item.label)}</span>
           </NavLink>
         ))}
       </nav>

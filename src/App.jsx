@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import './App.css'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
+import { LanguageProvider } from './context/LanguageContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { AdminRoute } from './components/AdminRoute'
 import { SupervisorRoute } from './components/SupervisorRoute'
@@ -20,6 +21,7 @@ import KelolaUpah from './pages/KelolaUpah'
 function App() {
   return (
     <ThemeProvider>
+      <LanguageProvider>
       <BrowserRouter>
         <AuthProvider>
           <Routes>
@@ -51,6 +53,7 @@ function App() {
           </Routes>
         </AuthProvider>
       </BrowserRouter>
+      </LanguageProvider>
     </ThemeProvider>
   )
 }

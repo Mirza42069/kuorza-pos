@@ -25,6 +25,7 @@ import { formatRupiah, formatDateTime } from '../lib/format'
 import { parseStaffNames } from '../lib/staffNames'
 import { useAuth } from '../context/useAuth'
 import { isStaff } from '../lib/roles'
+import { useLanguage } from '../context/useLanguage'
 
 const STATUS_LABELS = {
   created: 'Dibuat',
@@ -46,6 +47,7 @@ export default function DetailTreatment() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { profile } = useAuth()
+  const { t } = useLanguage()
   // The phone shell already names the screen in its top bar, so repeating it
   // as an <h1> here just burns a line of a short screen. Workers get a back
   // button in its place; the desk shell has no title of its own, so it keeps
@@ -191,7 +193,7 @@ export default function DetailTreatment() {
   }
 
   async function handleVoid() {
-    if (!confirm('Batalkan transaksi ini?')) return
+    if (!confirm(t('Batalkan transaksi ini?'))) return
     setBusy(true)
     try {
       await voidTreatment(id)
@@ -206,12 +208,12 @@ export default function DetailTreatment() {
   if (error) {
     return (
       <div className="detail-screen">
-        <p className="form-error">{error}</p>
+        <p className="form-error">{t(error)}</p>
       </div>
     )
   }
   if (!treatment) {
-    return <div className="loading-screen">Memuat...</div>
+    return <div className="loading-screen">{t('Memuat...')}</div>
   }
 
   const isFinal = treatment.status === 'voided' || treatment.status === 'closed'
@@ -227,10 +229,10 @@ export default function DetailTreatment() {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
             <path d="M15 5l-7 7 7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          Kembali
+          {t('Kembali')}
         </button>
       ) : (
-        <h1>Detail Transaksi</h1>
+        <h1>{t('Detail Transaksi')}</h1>
       )}
 
       <div className="detail-card">
@@ -241,19 +243,19 @@ export default function DetailTreatment() {
           </div>
           <div className="detail-card-badges">
             <span className={`status-badge status-${treatment.status}`}>
-              {STATUS_LABELS[treatment.status] || treatment.status}
+              {t(STATUS_LABELS[treatment.status] || treatment.status)}
             </span>
             <span
               className={`status-badge ${
                 paymentVerified ? 'status-closed' : isPaid ? 'status-diproses' : 'status-created'
               }`}
             >
-              {paymentVerified ? 'Lunas' : isPaid ? 'Bukti Bayar Belum Ada' : 'Belum Dibayar'}
+              {paymentVerified ? t('Lunas') : isPaid ? t('Bukti Bayar Belum Ada') : t('Belum Dibayar')}
             </span>
             <WashProofButton
               treatmentId={treatment.id}
               hasPhoto={hasPhoto}
-              onUploaded={() => {   
+              onUploaded={() => {
                 setPhotoError('')
                 load()
               }}
@@ -264,20 +266,20 @@ export default function DetailTreatment() {
 
         {treatment.customer_name && (
           <div className="struk-row">
-            <span>Pelanggan</span>
+            <span>{t('Pelanggan')}</span>
             <span>{treatment.customer_name}</span>
           </div>
         )}
         <div className="struk-row">
-          <span>Kendaraan</span>
+          <span>{t('Kendaraan')}</span>
           <span>{treatment.treatment_type || '-'}</span>
         </div>
         <div className="struk-row">
-          <span>Staf</span>
+          <span>{t('Staf')}</span>
           <span>{treatment.pic}</span>
         </div>
         <div className="struk-row struk-row-picker">
-          <span>Petugas Cuci</span>
+          <span>{t('Petugas Cuci')}</span>
           <MultiStaffPicker
             value={parseStaffNames(treatment.wash_staff)}
             onChange={handleAssignWash}
@@ -285,49 +287,49 @@ export default function DetailTreatment() {
           />
         </div>
         <div className="struk-row">
-          <span>Petugas QC</span>
+          <span>{t('Petugas QC')}</span>
           <StaffPicker value={treatment.qc_staff} onChange={handleAssignQc} disabled={busy || isFinal} />
         </div>
         <div className="struk-row">
-          <span>Tanggal</span>
+          <span>{t('Tanggal')}</span>
           <span>{formatDateTime(treatment.created_at)}</span>
         </div>
         <div className="struk-row">
-          <span>Bukti Foto</span>
+          <span>{t('Bukti Foto')}</span>
           {photoUrl ? (
             <button
               type="button"
               className="wash-proof-thumb-btn"
               onClick={() => setLightboxUrl(photoUrl)}
-              aria-label="Perbesar bukti foto cuci"
+              aria-label={t('Perbesar bukti foto cuci')}
             >
-              <img src={photoUrl} alt="Bukti foto cuci" className="wash-proof-thumb" />
+              <img src={photoUrl} alt={t('Bukti foto cuci')} className="wash-proof-thumb" />
             </button>
           ) : (
-            <span>Belum ada foto</span>
+            <span>{t('Belum ada foto')}</span>
           )}
         </div>
-        {photoError && <p className="form-error">{photoError}</p>}
+        {photoError && <p className="form-error">{t(photoError)}</p>}
         {isPaid && (
           <div className="struk-row">
-            <span>Pembayaran</span>
-            <span>{PAYMENT_METHOD_LABELS[treatment.payment.payment_method] || treatment.payment.payment_method}</span>
+            <span>{t('Pembayaran')}</span>
+            <span>{t(PAYMENT_METHOD_LABELS[treatment.payment.payment_method] || treatment.payment.payment_method)}</span>
           </div>
         )}
         {isPaid && treatment.payment.payment_method !== 'cash' && (
           <div className="struk-row">
-            <span>Bukti Bayar</span>
+            <span>{t('Bukti Bayar')}</span>
             {paymentProofUrl ? (
               <button
                 type="button"
                 className="wash-proof-thumb-btn"
                 onClick={() => setLightboxUrl(paymentProofUrl)}
-                aria-label="Perbesar bukti pembayaran"
+                aria-label={t('Perbesar bukti pembayaran')}
               >
-                <img src={paymentProofUrl} alt="Bukti pembayaran" className="wash-proof-thumb" />
+                <img src={paymentProofUrl} alt={t('Bukti pembayaran')} className="wash-proof-thumb" />
               </button>
             ) : (
-              <span>Belum ada foto</span>
+              <span>{t('Belum ada foto')}</span>
             )}
           </div>
         )}
@@ -346,17 +348,17 @@ export default function DetailTreatment() {
         <hr />
 
         <div className="struk-row">
-          <span>Subtotal</span>
+          <span>{t('Subtotal')}</span>
           <span>{formatRupiah(treatment.subtotal)}</span>
         </div>
         {treatment.discount > 0 && (
           <div className="struk-row">
-            <span>Diskon</span>
+            <span>{t('Diskon')}</span>
             <span>-{formatRupiah(treatment.discount)}</span>
           </div>
         )}
         <div className="struk-row struk-total">
-          <span>Total</span>
+          <span>{t('Total')}</span>
           <span>{formatRupiah(treatment.total)}</span>
         </div>
 
@@ -368,7 +370,7 @@ export default function DetailTreatment() {
               onClick={() => setPayMode(isPaid ? 'proof' : 'pay')}
               disabled={busy}
             >
-              {isPaid ? '📷 Foto Bukti Bayar' : '💳 Verifikasi Pembayaran'}
+              {isPaid ? `📷 ${t('Foto Bukti Bayar')}` : `💳 ${t('Verifikasi Pembayaran')}`}
             </button>
           </div>
         )}
@@ -376,30 +378,34 @@ export default function DetailTreatment() {
         {treatment.status === 'selesai' && !paymentVerified && (
           <p className="detail-hint">
             {isPaid
-              ? 'Foto bukti pembayaran QRIS/transfer diperlukan sebelum transaksi bisa ditutup.'
-              : 'Pembayaran harus diverifikasi sebelum transaksi bisa ditutup.'}
+              ? t('Foto bukti pembayaran QRIS/transfer diperlukan sebelum transaksi bisa ditutup.')
+              : t('Pembayaran harus diverifikasi sebelum transaksi bisa ditutup.')}
           </p>
         )}
 
         {treatment.status === 'qc' && !staffReady && (
-          <p className="detail-hint">Isi petugas cuci dan petugas QC terlebih dahulu sebelum menandai selesai.</p>
+          <p className="detail-hint">{t('Isi petugas cuci dan petugas QC terlebih dahulu sebelum menandai selesai.')}</p>
         )}
 
         {treatment.status === 'diproses' && !hasPhoto && (
-          <p className="detail-hint">Unggah bukti foto cuci terlebih dahulu sebelum mengirim ke QC.</p>
+          <p className="detail-hint">{t('Unggah bukti foto cuci terlebih dahulu sebelum mengirim ke QC.')}</p>
         )}
 
-        {treatment.notes && <p className="struk-notes">Catatan: {treatment.notes}</p>}
+        {treatment.notes && (
+          <p className="struk-notes">
+            {t('Catatan')}: {treatment.notes}
+          </p>
+        )}
 
         <div className="detail-actions">
           <button type="button" className="btn-secondary" onClick={() => navigate(`/struk/${treatment.id}`)}>
-            Lihat Struk
+            {t('Lihat Struk')}
           </button>
           {!isFinal && (
             <>
               {(treatment.status === 'created' || treatment.status === 'paid') && (
                 <button type="button" className="btn-primary" onClick={() => setStartOpen(true)} disabled={busy}>
-                  Mulai Proses
+                  {t('Mulai Proses')}
                 </button>
               )}
               {treatment.status === 'diproses' && (
@@ -408,9 +414,9 @@ export default function DetailTreatment() {
                   className="btn-primary"
                   onClick={handleSendToQC}
                   disabled={busy || !hasPhoto}
-                  title={hasPhoto ? undefined : 'Unggah bukti foto cuci terlebih dahulu'}
+                  title={hasPhoto ? undefined : t('Unggah bukti foto cuci terlebih dahulu')}
                 >
-                  Kirim ke QC
+                  {t('Kirim ke QC')}
                 </button>
               )}
               {treatment.status === 'qc' && (
@@ -419,18 +425,18 @@ export default function DetailTreatment() {
                   className="btn-primary"
                   onClick={handleMarkSelesai}
                   disabled={busy || !staffReady}
-                  title={staffReady ? undefined : 'Isi petugas cuci dan petugas QC terlebih dahulu'}
+                  title={staffReady ? undefined : t('Isi petugas cuci dan petugas QC terlebih dahulu')}
                 >
-                  Tandai Selesai
+                  {t('Tandai Selesai')}
                 </button>
               )}
               {treatment.status === 'selesai' && paymentVerified && (
                 <button type="button" className="btn-primary" onClick={handleClose} disabled={busy}>
-                  Tutup Transaksi
+                  {t('Tutup Transaksi')}
                 </button>
               )}
               <button type="button" className="btn-danger" onClick={handleVoid} disabled={busy}>
-                Batalkan
+                {t('Batalkan')}
               </button>
             </>
           )}
@@ -467,13 +473,13 @@ export default function DetailTreatment() {
             type="button"
             className="photo-lightbox-close"
             onClick={() => setLightboxUrl(null)}
-            aria-label="Tutup"
+            aria-label={t('Tutup')}
           >
             ✕
           </button>
           <img
             src={lightboxUrl}
-            alt="Bukti foto"
+            alt={t('Bukti foto')}
             className="photo-lightbox-image"
             onClick={(e) => e.stopPropagation()}
           />

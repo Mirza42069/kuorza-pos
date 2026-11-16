@@ -23,8 +23,25 @@ That is the entire scope. No payment processing, no booking system, no inventory
 - Hosting: Vercel
 
 ## Language
-All user-facing text, labels, button names, placeholder text, and error messages
-must be in Indonesian (Bahasa Indonesia).
+The UI is bilingual: Bahasa Indonesia (default) and English, switched with the
+ID/EN toggle on the login card and in both app shells (`LanguageToggle`). The
+choice is remembered per device in localStorage (`kuorza-language`).
+
+Indonesian is the source language. Write every user-facing string — labels,
+buttons, placeholders, error messages — in Indonesian and pass it through
+`t()` from `useLanguage()` (`src/context/useLanguage.js`). The Indonesian text
+itself is the lookup key; add its English to `src/lib/i18n-en.js`. A string
+with no English entry simply shows in Indonesian. Placeholders are
+`{name}`-style: `t('Sisa {count}', { count })`.
+- Error messages are stored as the Indonesian string and translated where
+  they're displayed (`{t(error)}`), so API/validation errors keep working
+- Plain modules (exports, date formatting) use `translate()` / `dateLocale()`
+  from `src/lib/i18n.js` instead of the hook
+- Don't name a `.map()` variable `t` in a component that uses `t()`
+- Money is never localized: always `formatRupiah` → "Rp 15.000"
+- Data from the database (service names, customer names, notes) and messages
+  raised by Postgres triggers/Edge Functions are shown as stored
+
 Code — variable names, function names, comments — stays in English.
 
 ---

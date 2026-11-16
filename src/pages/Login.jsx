@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { login } from '../api'
 import { useAuth } from '../context/useAuth'
 import { useTurnstile } from '../lib/turnstile'
+import { useLanguage } from '../context/useLanguage'
+import { LanguageToggle } from '../components/LanguageToggle'
 
 const IDLE_LOGOUT_FLAG = 'nd_idle_logout'
 
@@ -23,6 +25,7 @@ export default function Login() {
     return ''
   })
   const [submitting, setSubmitting] = useState(false)
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const { setProfile } = useAuth()
   const captchaRef = useRef(null)
@@ -71,17 +74,18 @@ export default function Login() {
   return (
     <div className="login-screen">
       <div className="login-card">
+        <LanguageToggle className="login-language" />
         <img src="/favicon.png" alt="Kuorza" className="login-brand-mark" />
         <h1>Kuorza</h1>
         <p className="login-subtitle">Point of Sale</p>
 
         <form className="login-form" onSubmit={handleSubmit}>
           <label>
-            Username
+            {t('Username')}
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="nama.anda"
+              placeholder={t('nama.anda')}
               autoCapitalize="none"
               autoCorrect="off"
               autoComplete="username"
@@ -107,11 +111,11 @@ export default function Login() {
               needs an interactive challenge — see src/lib/turnstile.js. */}
           <div ref={captchaRef} className="login-captcha" />
 
-          {info && !error && <p className="form-info">{info}</p>}
-          {error && <p className="form-error">{error}</p>}
+          {info && !error && <p className="form-info">{t(info)}</p>}
+          {error && <p className="form-error">{t(error)}</p>}
 
           <button type="submit" className="btn-primary login-submit" disabled={submitting}>
-            {submitting ? 'Masuk...' : 'Masuk'}
+            {submitting ? t('Masuk...') : t('Masuk')}
           </button>
         </form>
       </div>

@@ -1,28 +1,37 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getActiveServices, getAvailableShelfItems, getActiveProfiles, createTreatment } from '../api'
 import { ServicePicker } from '../components/ServicePicker'
 import { ShelfItemPicker } from '../components/ShelfItemPicker'
 import { StaffPicker } from '../components/StaffPicker'
 import { MultiStaffPicker } from '../components/MultiStaffPicker'
+import { MissingFieldsModal } from '../components/MissingFieldsModal'
 import { formatRupiah } from '../lib/format'
-import { getServicePrice } from '../lib/servicePrice'
+import { getServicePrice, hasPromo, PRICE_MODES } from '../lib/servicePrice'
+import { PriceModeToggle } from '../components/PriceModeToggle'
 import { findDefaultQcStaff } from '../lib/staffDefaults'
 import { useAuth } from '../context/useAuth'
 import { isStaff } from '../lib/roles'
+import { useLanguage } from '../context/useLanguage'
 
 // Workers build a ticket one page at a time — items, customer, confirmation —
 // while the desk keeps the single two-column screen. Both share the same state
 // and the same submit; only the chrome around it changes.
+
 const WIZARD_STEPS = [
   { number: 1, label: 'Item' },
   { number: 2, label: 'Pelanggan' },
   { number: 3, label: 'Konfirmasi' },
 ]
 
-function TicketLines({ items, emptyText, onQuantityChange, onRemove }) {
+function TicketLines({ items, emptyText, invalid = false, onQuantityChange, onRemove }) {
+  const { t } = useLanguage()
   if (items.length === 0) {
-    return <p className="ticket-lines-empty">{emptyText}</p>
+    return (
+      <p className={`ticket-lines-empty ${invalid ? 'is-invalid' : ''}`} data-field="items">
+        {emptyText}
+      </p>
+    )
   }
 
   return (
@@ -32,8 +41,8 @@ function TicketLines({ items, emptyText, onQuantityChange, onRemove }) {
           <div className="ticket-line-info">
             <span className="ticket-line-name">{item.serviceName}</span>
             <span className="ticket-line-unit">
-              {formatRupiah(item.unitPrice)} / item
-              {item.maxQuantity != null && ` · stok ${item.maxQuantity}`}
+              {formatRupiah(item.unitPrice)} / {t('item')}
+              {item.maxQuantity != null && ` · ${t('stok {count}', { count: item.maxQuantity })}`}
             </span>
           </div>
           <div className="ticket-line-qty">
@@ -59,7 +68,7 @@ function TicketLines({ items, emptyText, onQuantityChange, onRemove }) {
             type="button"
             className="ticket-line-remove"
             onClick={() => onRemove(item.key)}
-            aria-label="Hapus item"
+            aria-label={t('Hapus item')}
           >
             ✕
           </button>
@@ -69,57 +78,119 @@ function TicketLines({ items, emptyText, onQuantityChange, onRemove }) {
   )
 }
 
+// One vehicle per unit of a vehicle service on the ticket — "Motor Basic Wash
+// - S" ×2 is two motorbikes, each needing its own plate. Slots are keyed by
+// line key + index rather than position, so removing one line doesn't shift
+// the plates already typed for the others onto the wrong service.
+function buildVehicleSlots(items) {
+  const vehicleLines = items.filter((item) => item.requiresVehicle)
+  const slots = []
+  for (const line of vehicleLines) {
+    for (let i = 0; i < line.quantity; i++) {
+      slots.push({
+        key: `${line.key}-${i}`,
+        serviceName: line.serviceName,
+        // Only number units within a line when there's more than one of it.
+        unitLabel: line.quantity > 1 ? ` #${i + 1}` : '',
+      })
+    }
+  }
+  return slots
+}
+
+// "Nomor Plat", or "Nomor Plat Kendaraan 2 — Motor Basic Wash - S #2" once
+// there's more than one vehicle — used by both the field and the popup, so
+// the popup names exactly the label staff will see on screen. `field` is the
+// untranslated Indonesian label ('Nomor Plat' / 'Merek Kendaraan').
+function vehicleFieldLabel(t, field, vehicleSlots, index) {
+  if (vehicleSlots.length <= 1) return t(field)
+  const slot = vehicleSlots[index]
+  return t('{field} Kendaraan {number} — {service}', {
+    field: t(field),
+    number: index + 1,
+    service: `${slot.serviceName}${slot.unitLabel}`,
+  })
+}
+
+// Small red note under a highlighted field, so the reason survives after the
+// popup is dismissed.
+function FieldHint({ show, children }) {
+  const { t } = useLanguage()
+  if (!show) return null
+  return <span className="field-invalid-hint">{children ?? t('Wajib diisi')}</span>
+}
+
 function CustomerFields({
+  isInvalid,
   needsVehicle,
-  plateNumber,
+  vehicleSlots,
+  plateNumbers,
   setPlateNumber,
-  vehicleBrand,
+  vehicleBrands,
   setVehicleBrand,
   customerName,
   setCustomerName,
   customerPhone,
   setCustomerPhone,
 }) {
+  const { t } = useLanguage()
   return (
     <div className="ticket-fields">
       {needsVehicle && (
         <>
-          <label>
-            Nomor Plat
-            <input
-              value={plateNumber}
-              onChange={(e) => setPlateNumber(e.target.value)}
-              placeholder="Contoh: B 1234 XYZ"
-              required
-            />
-          </label>
-          <label>
-            Merek Kendaraan
-            <input
-              value={vehicleBrand}
-              onChange={(e) => setVehicleBrand(e.target.value)}
-              placeholder="Contoh: Honda Vario"
-            />
-          </label>
+          {vehicleSlots.map((slot, index) => {
+            const plateIssue = isInvalid(`plate-${slot.key}`)
+            return (
+              <Fragment key={slot.key}>
+                <label className={plateIssue ? 'is-invalid' : ''}>
+                  {vehicleFieldLabel(t, 'Nomor Plat', vehicleSlots, index)}
+                  <input
+                    className={plateIssue ? 'is-invalid' : ''}
+                    data-field={`plate-${slot.key}`}
+                    value={plateNumbers[slot.key] ?? ''}
+                    onChange={(e) => setPlateNumber(slot.key, e.target.value)}
+                    placeholder={t('Contoh: B 1234 XYZ')}
+                    required
+                    aria-invalid={plateIssue ? true : undefined}
+                  />
+                  <FieldHint show={plateIssue}>
+                    {plateIssue === 'duplicate' ? t('Nomor plat sama dengan kendaraan lain') : t('Wajib diisi')}
+                  </FieldHint>
+                </label>
+                <label>
+                  {vehicleFieldLabel(t, 'Merek Kendaraan', vehicleSlots, index)}
+                  <input
+                    value={vehicleBrands[slot.key] ?? ''}
+                    onChange={(e) => setVehicleBrand(slot.key, e.target.value)}
+                    placeholder={t('Contoh: Honda Vario')}
+                  />
+                </label>
+              </Fragment>
+            )
+          })}
         </>
       )}
-      <label>
-        Nama Pelanggan
+      <label className={isInvalid('customerName') ? 'is-invalid' : ''}>
+        {t('Nama Pelanggan')}
         <input
+          className={isInvalid('customerName') ? 'is-invalid' : ''}
+          data-field="customerName"
           value={customerName}
           onChange={(e) => setCustomerName(e.target.value)}
-          placeholder="Nama pelanggan"
+          placeholder={t('Nama pelanggan')}
           required
+          aria-invalid={isInvalid('customerName') ? true : undefined}
         />
+        <FieldHint show={isInvalid('customerName')} />
       </label>
       <label>
-        Nomor Telepon
+        {t('Nomor Telepon')}
         <input
           type="tel"
           value={customerPhone}
           onChange={(e) => setCustomerPhone(e.target.value)}
           placeholder="08xxxxxxxxxx"
-          // required
+        // required
         />
       </label>
     </div>
@@ -130,14 +201,15 @@ function CustomerFields({
 // picked at Mulai Proses — but QC starts pre-filled with the regular QC
 // person (see lib/staffDefaults) and can be changed or cleared.
 function StaffFields({ washStaff, setWashStaff, qcStaff, setQcStaff }) {
+  const { t } = useLanguage()
   return (
     <div className="ticket-fields ticket-staff-fields">
       <div className="ticket-staff-row">
-        <span className="ticket-staff-label">Petugas Cuci</span>
+        <span className="ticket-staff-label">{t('Petugas Cuci')}</span>
         <MultiStaffPicker value={washStaff} onChange={setWashStaff} />
       </div>
       <div className="ticket-staff-row">
-        <span className="ticket-staff-label">Petugas QC</span>
+        <span className="ticket-staff-label">{t('Petugas QC')}</span>
         <StaffPicker value={qcStaff} onChange={setQcStaff} />
       </div>
     </div>
@@ -150,10 +222,11 @@ function DiscountFields({
   discountInput,
   setDiscountInput,
 }) {
+  const { t } = useLanguage()
   return (
     <div className="ticket-discount">
       <label>
-        Diskon
+        {t('Diskon')}
         <select
           value={discountType}
           onChange={(e) => {
@@ -163,8 +236,8 @@ function DiscountFields({
             setDiscountInput('')
           }}
         >
-          <option value="percent">Persentase (%)</option>
-          <option value="nominal">Nominal (Rp)</option>
+          <option value="percent">{t('Persentase (%)')}</option>
+          <option value="nominal">{t('Nominal (Rp)')}</option>
         </select>
       </label>
       <input
@@ -174,39 +247,41 @@ function DiscountFields({
         inputMode="numeric"
         value={discountInput}
         onChange={(e) => setDiscountInput(e.target.value)}
-        placeholder={discountType === 'percent' ? 'Contoh: 10' : 'Contoh: 20000'}
-        aria-label={discountType === 'percent' ? 'Diskon dalam persen' : 'Diskon dalam Rupiah'}
+        placeholder={discountType === 'percent' ? t('Contoh: 10') : t('Contoh: 20000')}
+        aria-label={discountType === 'percent' ? t('Diskon dalam persen') : t('Diskon dalam Rupiah')}
       />
     </div>
   )
 }
 
 function NotesField({ notes, setNotes }) {
+  const { t } = useLanguage()
   return (
     <label className="ticket-notes">
-      Catatan
+      {t('Catatan')}
       <textarea
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
-        placeholder="Catatan tambahan (opsional)"
+        placeholder={t('Catatan tambahan (opsional)')}
       />
     </label>
   )
 }
 
 function TicketSummary({ subtotal, discountValue, total }) {
+  const { t } = useLanguage()
   return (
     <div className="transaksi-summary">
       <div>
-        <span>Subtotal</span>
+        <span>{t('Subtotal')}</span>
         <span>{formatRupiah(subtotal)}</span>
       </div>
       <div>
-        <span>Diskon</span>
+        <span>{t('Diskon')}</span>
         <span>{formatRupiah(discountValue)}</span>
       </div>
       <div className="transaksi-total">
-        <span>Total</span>
+        <span>{t('Total')}</span>
         <span>{formatRupiah(total)}</span>
       </div>
     </div>
@@ -215,6 +290,7 @@ function TicketSummary({ subtotal, discountValue, total }) {
 
 export default function TransaksiBaru() {
   const { profile } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   // Staff get the phone wizard; supervisors/admin keep the desk layout.
   const workerView = isStaff(profile)
@@ -222,13 +298,20 @@ export default function TransaksiBaru() {
   const [services, setServices] = useState([])
   const [shelfItems, setShelfItems] = useState([])
   const [selectedItems, setSelectedItems] = useState([])
-  const [plateNumber, setPlateNumber] = useState('')
+  // Plates by vehicle slot key (see buildVehicleSlots). Entries for slots that
+  // no longer exist are kept, so bumping a quantity back up restores what was
+  // typed — only the current slots are ever validated or saved.
+  const [plateNumbers, setPlateNumbers] = useState({})
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
-  const [vehicleBrand, setVehicleBrand] = useState('')
+  // Brands by vehicle slot key, same as plateNumbers.
+  const [vehicleBrands, setVehicleBrands] = useState({})
   const [discountType, setDiscountType] = useState('percent')
   const [discountInput, setDiscountInput] = useState('')
   const [notes, setNotes] = useState('')
+  // Promo or harga normal for every service on this ticket — see
+  // PriceModeToggle. Defaults to promo, which is what Katalog advertises.
+  const [priceMode, setPriceMode] = useState(PRICE_MODES.PROMO)
   const [washStaff, setWashStaff] = useState([])
   // undefined = roster not loaded yet, so the default hasn't been applied;
   // null = deliberately nobody. Keeps a choice made before the roster arrives
@@ -237,7 +320,14 @@ export default function TransaksiBaru() {
   const [step, setStep] = useState(1)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  // Set after a submit/Lanjut attempt that found gaps. Highlights are then
+  // computed live from the form state, so each one clears as soon as that
+  // field is filled — no need to resubmit to see what's left.
+  const [showInvalid, setShowInvalid] = useState(false)
+  // The issues listed in the popup, or null when it's closed.
+  const [missingPopup, setMissingPopup] = useState(null)
   const wizardRef = useRef(null)
+  const deskRef = useRef(null)
 
   useEffect(() => {
     getActiveServices()
@@ -282,7 +372,7 @@ export default function TransaksiBaru() {
       key: `service-${service.id}`,
       serviceId: service.id,
       serviceName: service.name,
-      unitPrice: getServicePrice(service),
+      unitPrice: getServicePrice(service, priceMode),
       requiresVehicle: service.requires_vehicle,
     })
   }
@@ -304,6 +394,21 @@ export default function TransaksiBaru() {
       maxQuantity: item.stock,
     })
   }
+
+  // Switching mode reprices the service lines already on the ticket, so the
+  // whole ticket is always on one price mode. Shelf items keep their price.
+  function changePriceMode(mode) {
+    setPriceMode(mode)
+    setSelectedItems((items) =>
+      items.map((item) => {
+        if (item.serviceId == null) return item
+        const service = services.find((s) => s.id === item.serviceId)
+        return service ? { ...item, unitPrice: getServicePrice(service, mode) } : item
+      })
+    )
+  }
+
+  const promoCount = useMemo(() => services.filter(hasPromo).length, [services])
 
   function removeLine(key) {
     setSelectedItems((items) => items.filter((item) => item.key !== key))
@@ -337,6 +442,92 @@ export default function TransaksiBaru() {
   // ticket only asks for plate and brand once something vehicle-related is on
   // it — a Cuci Helm ticket never does.
   const needsVehicle = selectedItems.some((item) => item.requiresVehicle)
+  const vehicleSlots = useMemo(() => buildVehicleSlots(selectedItems), [selectedItems])
+  const currentPlates = vehicleSlots.map((slot) => (plateNumbers[slot.key] ?? '').trim())
+
+  const currentBrands = vehicleSlots.map((slot) => (vehicleBrands[slot.key] ?? '').trim())
+
+  function setPlateNumber(slotKey, value) {
+    setPlateNumbers((plates) => ({ ...plates, [slotKey]: value }))
+  }
+
+  function setVehicleBrand(slotKey, value) {
+    setVehicleBrands((brands) => ({ ...brands, [slotKey]: value }))
+  }
+
+  // Brand stays optional per vehicle. treatment_type is one text column, so
+  // brands are stored comma-separated in the same order as the plates; a
+  // blank one is written as '-' so the Nth brand still lines up with the Nth
+  // plate. Null when no brand was typed at all.
+  
+  const treatmentTypeValue = currentBrands.some(Boolean)
+    ? currentBrands.map((brand) => brand || '-').join(', ')
+    : null
+
+  // Everything a ticket can't be saved without, as { key, label, kind } —
+  // key matches the field's data-field attribute so it can be highlighted
+  // and focused. `scope` limits it to one wizard page: 'items', 'customer',
+  // or 'all' for the final submit / desk form. Phone is optional for now.
+  
+  function collectIssues(scope = 'all') {
+    const issues = []
+    if ((scope === 'all' || scope === 'items') && selectedItems.length === 0) {
+      issues.push({ key: 'items', label: t('Pilih minimal satu layanan atau barang'), kind: 'missing' })
+    }
+    if (scope === 'all' || scope === 'customer') {
+      if (needsVehicle) {
+        // Every vehicle needs a plate, and no plate twice — two vehicles
+        // can't share one.
+        const normalized = currentPlates.map((plate) => plate.toUpperCase().replace(/\s+/g, ''))
+        vehicleSlots.forEach((slot, index) => {
+          const key = `plate-${slot.key}`
+          const label = vehicleFieldLabel(t, 'Nomor Plat', vehicleSlots, index)
+          if (!currentPlates[index]) {
+            issues.push({ key, label, kind: 'missing' })
+          } else if (normalized.indexOf(normalized[index]) !== index) {
+            issues.push({ key, label: t('{label} (sama dengan kendaraan lain)', { label }), kind: 'duplicate' })
+          }
+        })
+      }
+      if (!customerName.trim()) {
+        issues.push({ key: 'customerName', label: t('Nama Pelanggan'), kind: 'missing' })
+      }
+    }
+    return issues
+  }
+
+  const liveIssues = showInvalid ? collectIssues() : []
+  // Truthy for a highlighted field: 'missing' or 'duplicate'.
+  function isInvalid(key) {
+    return liveIssues.find((issue) => issue.key === key)?.kind ?? false
+  }
+
+  // Returns true when the form may continue; otherwise flags the fields and
+  // opens the popup listing them.
+  function checkRequired(scope) {
+    const issues = collectIssues(scope)
+    if (issues.length === 0) return true
+    setError('')
+    setShowInvalid(true)
+    setMissingPopup(issues)
+    return false
+  }
+
+  // After the popup is dismissed, put the cursor in the first field it named
+  // so staff land right where they need to type.
+  function closeMissingPopup() {
+    const firstKey = missingPopup?.[0]?.key
+    setMissingPopup(null)
+    if (!firstKey) return
+    requestAnimationFrame(() => {
+      const root = (workerView ? wizardRef : deskRef).current
+      const target = root?.querySelector(`[data-field="${firstKey}"]`)
+      if (!target) return
+      target.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      if (target.tagName === 'INPUT') target.focus({ preventScroll: true })
+    })
+  }
+
   // Staff type the discount as either a percentage of the bill or a straight
   // Rupiah amount. Percentages are resolved against the subtotal and rounded
   // to a whole Rupiah — the DB column is numeric but the app never displays or
@@ -363,31 +554,19 @@ export default function TransaksiBaru() {
 
   function goToStep(next) {
     setError('')
+    setShowInvalid(false)
     setStep(next)
     scrollToTop()
   }
 
   function goNext() {
     if (step === 1) {
-      if (selectedItems.length === 0) {
-        setError('Pilih minimal satu layanan atau barang')
-        scrollToTop()
-        return
-      }
+      if (!checkRequired('items')) return
       goToStep(2)
       return
     }
     if (step === 2) {
-      if (needsVehicle && !plateNumber.trim()) {
-        setError('Nomor plat wajib diisi')
-        scrollToTop()
-        return
-      }
-      if (!customerName.trim()) {
-        setError('Nama pelanggan wajib diisi')
-        scrollToTop()
-        return
-      }
+      if (!checkRequired('customer')) return
       goToStep(3)
     }
   }
@@ -396,18 +575,7 @@ export default function TransaksiBaru() {
     e.preventDefault()
     setError('')
 
-    if (selectedItems.length === 0) {
-      setError('Pilih minimal satu layanan atau barang')
-      return
-    }
-    if (needsVehicle && !plateNumber.trim()) {
-      setError('Nomor plat wajib diisi')
-      return
-    }
-    if (!customerName.trim()) {
-      setError('Nama pelanggan wajib diisi')
-      return
-    }
+    if (!checkRequired('all')) return
     // if (!customerPhone.trim()) {
     //   setError('Nomor telepon wajib diisi')
     //   return
@@ -421,8 +589,11 @@ export default function TransaksiBaru() {
       await createTreatment({
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
-        plateNumber: needsVehicle ? plateNumber : null,
-        treatmentType: needsVehicle ? vehicleBrand.trim() || null : null,
+        // treatments.plate_number is one text column, so several vehicles'
+        // plates share it comma-separated — the same convention as
+        // wash_staff. Plate search (ilike) still finds each one.
+        plateNumber: needsVehicle ? currentPlates.join(', ') : null,
+        treatmentType: needsVehicle ? treatmentTypeValue : null,
         pic: profile.full_name,
         notes: notes.trim() || null,
         items: selectedItems,
@@ -443,10 +614,12 @@ export default function TransaksiBaru() {
 
   const customerFields = (
     <CustomerFields
+      isInvalid={isInvalid}
       needsVehicle={needsVehicle}
-      plateNumber={plateNumber}
+      vehicleSlots={vehicleSlots}
+      plateNumbers={plateNumbers}
       setPlateNumber={setPlateNumber}
-      vehicleBrand={vehicleBrand}
+      vehicleBrands={vehicleBrands}
       setVehicleBrand={setVehicleBrand}
       customerName={customerName}
       setCustomerName={setCustomerName}
@@ -464,6 +637,10 @@ export default function TransaksiBaru() {
     />
   )
 
+  const priceModeToggle = (
+    <PriceModeToggle value={priceMode} onChange={changePriceMode} promoCount={promoCount} />
+  )
+
   const discountFields = (
     <DiscountFields
       discountType={discountType}
@@ -471,6 +648,10 @@ export default function TransaksiBaru() {
       discountInput={discountInput}
       setDiscountInput={setDiscountInput}
     />
+  )
+
+  const missingFieldsModal = missingPopup && (
+    <MissingFieldsModal issues={missingPopup} onClose={closeMissingPopup} />
   )
 
   // ---- Worker flow: three pages, confirmed before it is queued ----
@@ -487,39 +668,46 @@ export default function TransaksiBaru() {
     }
 
     return (
+      <>
       <form ref={wizardRef} className="worker-wizard" onSubmit={handleWizardSubmit} noValidate>
-        <ol className="worker-wizard-steps" aria-label="Tahap transaksi baru">
+        <ol className="worker-wizard-steps" aria-label={t('Tahap transaksi baru')}>
           {WIZARD_STEPS.map((item) => (
             <li
               key={item.number}
-              className={`worker-wizard-step ${step === item.number ? 'active' : ''} ${
-                step > item.number ? 'done' : ''
-              }`}
+              className={`worker-wizard-step ${step === item.number ? 'active' : ''} ${step > item.number ? 'done' : ''
+                }`}
               aria-current={step === item.number ? 'step' : undefined}
             >
               <span className="worker-wizard-step-dot">
                 {step > item.number ? '✓' : item.number}
               </span>
-              <span className="worker-wizard-step-label">{item.label}</span>
+              <span className="worker-wizard-step-label">{t(item.label)}</span>
             </li>
           ))}
         </ol>
 
-        {error && <p className="form-error worker-wizard-error">{error}</p>}
+        {error && <p className="form-error worker-wizard-error">{t(error)}</p>}
 
         {step === 1 && (
           <section className="worker-wizard-page">
             <header className="worker-wizard-head">
-              <h2 className="worker-wizard-title">Pilih Layanan &amp; Barang</h2>
+              <h2 className="worker-wizard-title">{t('Pilih Layanan & Barang')}</h2>
               <p className="worker-wizard-subtitle">
-                Ketuk kartu untuk menambah. Jumlah bisa diubah di daftar bawah.
+                {t('Ketuk kartu untuk menambah. Jumlah bisa diubah di daftar bawah.')}
               </p>
             </header>
 
-            <h2 className="transaksi-section-label">Layanan</h2>
-            <ServicePicker services={services} selectedItems={selectedItems} onAdd={addService} />
+            {priceModeToggle}
 
-            <h2 className="transaksi-section-label">Barang</h2>
+            <h2 className="transaksi-section-label">{t('Layanan')}</h2>
+            <ServicePicker
+              services={services}
+              selectedItems={selectedItems}
+              onAdd={addService}
+              priceMode={priceMode}
+            />
+
+            <h2 className="transaksi-section-label">{t('Barang')}</h2>
             <ShelfItemPicker
               items={shelfItems}
               selectedItems={selectedItems}
@@ -528,10 +716,10 @@ export default function TransaksiBaru() {
 
             {selectedItems.length > 0 && (
               <div className="worker-wizard-card">
-                <div className="worker-wizard-card-title">Item dipilih</div>
+                <div className="worker-wizard-card-title">{t('Item dipilih')}</div>
                 <TicketLines
                   items={selectedItems}
-                  emptyText="Belum ada item dipilih"
+                  emptyText={t('Belum ada item dipilih')}
                   onQuantityChange={changeQuantity}
                   onRemove={removeLine}
                 />
@@ -543,18 +731,18 @@ export default function TransaksiBaru() {
         {step === 2 && (
           <section className="worker-wizard-page">
             <header className="worker-wizard-head">
-              <h2 className="worker-wizard-title">Informasi Pelanggan</h2>
+              <h2 className="worker-wizard-title">{t('Informasi Pelanggan')}</h2>
               <p className="worker-wizard-subtitle">
                 {needsVehicle
-                  ? 'Isi data pelanggan dan kendaraan yang akan dicuci.'
-                  : 'Isi data pelanggan untuk tiket ini.'}
+                  ? t('Isi data pelanggan dan kendaraan yang akan dicuci.')
+                  : t('Isi data pelanggan untuk tiket ini.')}
               </p>
             </header>
 
             <div className="worker-wizard-card">{customerFields}</div>
 
             <div className="worker-wizard-card">
-              <div className="worker-wizard-card-title">Petugas</div>
+              <div className="worker-wizard-card-title">{t('Petugas')}</div>
               {staffFields}
             </div>
           </section>
@@ -563,52 +751,63 @@ export default function TransaksiBaru() {
         {step === 3 && (
           <section className="worker-wizard-page">
             <header className="worker-wizard-head">
-              <h2 className="worker-wizard-title">Konfirmasi</h2>
+              <h2 className="worker-wizard-title">{t('Konfirmasi')}</h2>
               <p className="worker-wizard-subtitle">
-                Periksa detail tiket sebelum disimpan ke antrian.
+                {t('Periksa detail tiket sebelum disimpan ke antrian.')}
               </p>
             </header>
 
             <div className="worker-wizard-card">
-              <div className="worker-wizard-card-title">Pelanggan</div>
+              <div className="worker-wizard-card-title">{t('Pelanggan')}</div>
               <dl className="worker-wizard-review">
                 <div className="worker-wizard-review-row">
-                  <dt>Nama</dt>
+                  <dt>{t('Nama')}</dt>
                   <dd>{customerName.trim() || '—'}</dd>
                 </div>
                 {customerPhone.trim() && (
                   <div className="worker-wizard-review-row">
-                    <dt>Telepon</dt>
+                    <dt>{t('Telepon')}</dt>
                     <dd>{customerPhone.trim()}</dd>
                   </div>
                 )}
                 {needsVehicle && (
                   <>
-                    <div className="worker-wizard-review-row">
-                      <dt>Nomor Plat</dt>
-                      <dd>{plateNumber.trim() || '—'}</dd>
-                    </div>
-                    {vehicleBrand.trim() && (
-                      <div className="worker-wizard-review-row">
-                        <dt>Kendaraan</dt>
-                        <dd>{vehicleBrand.trim()}</dd>
-                      </div>
-                    )}
+                    {vehicleSlots.map((slot, index) => {
+                      const number = vehicleSlots.length > 1 ? ` ${index + 1}` : ''
+                      return (
+                        <Fragment key={slot.key}>
+                          <div className="worker-wizard-review-row">
+                            <dt>{`${t('Nomor Plat')}${number}`}</dt>
+                            <dd>{currentPlates[index] || '—'}</dd>
+                          </div>
+                          {currentBrands[index] && (
+                            <div className="worker-wizard-review-row">
+                              <dt>{`${t('Kendaraan')}${number}`}</dt>
+                              <dd>{currentBrands[index]}</dd>
+                            </div>
+                          )}
+                        </Fragment>
+                      )
+                    })}
                   </>
                 )}
                 <div className="worker-wizard-review-row">
-                  <dt>Petugas Cuci</dt>
+                  <dt>{t('Petugas Cuci')}</dt>
                   <dd>{washStaff.length ? washStaff.join(', ') : '—'}</dd>
                 </div>
                 <div className="worker-wizard-review-row">
-                  <dt>Petugas QC</dt>
+                  <dt>{t('Petugas QC')}</dt>
                   <dd>{qcStaff || '—'}</dd>
                 </div>
               </dl>
             </div>
 
             <div className="worker-wizard-card">
-              <div className="worker-wizard-card-title">Item ({lineCount})</div>
+              <div className="worker-wizard-card-title">
+                {t('Item ({count})', { count: lineCount })}
+                {promoCount > 0 &&
+                  ` · ${priceMode === PRICE_MODES.PROMO ? t('Harga Promo') : t('Harga Normal')}`}
+              </div>
               <ul className="worker-wizard-review-items">
                 {selectedItems.map((item) => (
                   <li key={item.key} className="worker-wizard-review-item">
@@ -636,7 +835,7 @@ export default function TransaksiBaru() {
         <div className="worker-actionbar worker-wizard-bar">
           <div className="worker-actionbar-summary">
             <span className="worker-actionbar-count">
-              {lineCount} item{lineCount === 0 ? ' dipilih' : ''}
+              {lineCount === 0 ? t('0 item dipilih') : t('{count} item', { count: lineCount })}
             </span>
             <span className="worker-actionbar-total">{formatRupiah(total)}</span>
           </div>
@@ -647,7 +846,7 @@ export default function TransaksiBaru() {
                 className="worker-wizard-back"
                 onClick={() => goToStep(step - 1)}
               >
-                Kembali
+                {t('Kembali')}
               </button>
             )}
             <button
@@ -657,32 +856,43 @@ export default function TransaksiBaru() {
             >
               {step === WIZARD_STEPS.length
                 ? submitting
-                  ? 'Menyimpan...'
-                  : 'Simpan'
-                : 'Lanjut'}
+                  ? t('Menyimpan...')
+                  : t('Simpan')
+                : t('Lanjut')}
             </button>
           </div>
         </div>
       </form>
+      {missingFieldsModal}
+      </>
     )
   }
 
   // ---- Desk flow: the two-column screen, unchanged ----
+  // noValidate: the browser's own "please fill out this field" bubble would
+  // stop the submit before handleSubmit runs and only ever names one field.
   return (
-    <form className="transaksi-baru-screen" onSubmit={handleSubmit}>
+    <>
+    <form ref={deskRef} className="transaksi-baru-screen" onSubmit={handleSubmit} noValidate>
       <div className="transaksi-catalog">
         <div className="transaksi-catalog-header">
-          <h1>Transaksi Baru</h1>
+          <h1>{t('Transaksi Baru')}</h1>
         </div>
-        <h2 className="transaksi-section-label">Layanan</h2>
-        <ServicePicker services={services} selectedItems={selectedItems} onAdd={addService} />
+        {priceModeToggle}
+        <h2 className="transaksi-section-label">{t('Layanan')}</h2>
+        <ServicePicker
+          services={services}
+          selectedItems={selectedItems}
+          onAdd={addService}
+          priceMode={priceMode}
+        />
 
-        <h2 className="transaksi-section-label transaksi-section-label-spaced">Barang</h2>
+        <h2 className="transaksi-section-label transaksi-section-label-spaced">{t('Barang')}</h2>
         <ShelfItemPicker items={shelfItems} selectedItems={selectedItems} onAdd={addShelfItem} />
       </div>
 
       <aside className="ticket-panel">
-        <div className="ticket-panel-title">Tiket Saat Ini</div>
+        <div className="ticket-panel-title">{t('Tiket Saat Ini')}</div>
 
         {customerFields}
 
@@ -690,7 +900,8 @@ export default function TransaksiBaru() {
 
         <TicketLines
           items={selectedItems}
-          emptyText="Belum ada item — pilih layanan atau barang di sebelah kiri"
+          emptyText={t('Belum ada item — pilih layanan atau barang di sebelah kiri')}
+          invalid={Boolean(isInvalid('items'))}
           onQuantityChange={changeQuantity}
           onRemove={removeLine}
         />
@@ -701,12 +912,14 @@ export default function TransaksiBaru() {
 
         <TicketSummary subtotal={subtotal} discountValue={discountValue} total={total} />
 
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="form-error">{t(error)}</p>}
 
         <button type="submit" className="ticket-submit" disabled={submitting}>
-          {submitting ? 'Menyimpan...' : 'Simpan ke Antrian'}
+          {submitting ? t('Menyimpan...') : t('Simpan ke Antrian')}
         </button>
       </aside>
     </form>
+    {missingFieldsModal}
+    </>
   )
 }

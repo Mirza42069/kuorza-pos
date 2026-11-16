@@ -1,3 +1,5 @@
+import { translate as t, dateLocale } from './i18n'
+
 // Calendar-aligned periods for reporting — weekly is Mon-Sun, not a trailing
 // 7 days, so figures match how a bookkeeping report is normally read.
 export function getPeriodRange(period) {
@@ -63,18 +65,18 @@ export function formatPeriodLabel(period) {
   const { start, end } = getPeriodRange(period)
 
   if (period === 'daily') {
-    return `Harian - ${start.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`
+    return `${t('Harian')} - ${start.toLocaleDateString(dateLocale(), { day: 'numeric', month: 'long', year: 'numeric' })}`
   }
 
   if (period === 'weekly') {
     const lastDay = new Date(end.getTime() - 1)
-    const fmt = (d) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-    return `Mingguan - ${fmt(start)} s/d ${fmt(lastDay)}`
+    const fmt = (d) => d.toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' })
+    return `${t('Mingguan')} - ${t('{start} s/d {end}', { start: fmt(start), end: fmt(lastDay) })}`
   }
 
   if (period === 'monthly') {
-    return `Bulanan - ${start.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`
+    return `${t('Bulanan')} - ${start.toLocaleDateString(dateLocale(), { month: 'long', year: 'numeric' })}`
   }
 
-  return `Tahunan - ${start.getFullYear()}`
+  return `${t('Tahunan')} - ${start.getFullYear()}`
 }

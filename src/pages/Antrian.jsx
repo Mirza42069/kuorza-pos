@@ -14,6 +14,7 @@ import { formatRupiah, formatDateTime, ticketLabel } from '../lib/format'
 import { WashProofButton } from '../components/WashProofButton'
 import { QueueCard } from '../components/QueueCard'
 import { useAuth } from '../context/useAuth'
+import { useLanguage } from '../context/useLanguage'
 import { isStaff } from '../lib/roles'
 import { TASK_REMINDER_DAYS, daysOpen, isOverdue } from '../lib/taskReminder'
 
@@ -40,6 +41,7 @@ const ADVANCE = {
 export default function Antrian() {
   const navigate = useNavigate()
   const { profile } = useAuth()
+  const { t } = useLanguage()
   // Workers are on a phone: the queue reads as cards, and the money figure
   // stays on the desk view. 'Belum Dibayar' does not — a worker has to know
   // not to release a vehicle that hasn't paid.
@@ -145,9 +147,9 @@ export default function Antrian() {
   return (
     <div className="antrian-screen">
       <div className="riwayat-header">
-        <h1>Dashboard</h1>
+        <h1>{t('Dashboard')}</h1>
         <Link to="/transaksi-baru" className="btn-primary antrian-new-link">
-          + Transaksi Baru
+          + {t('Transaksi Baru')}
         </Link>
       </div>
 
@@ -161,7 +163,7 @@ export default function Antrian() {
               onClick={() => setFilter(f.key)}
               aria-pressed={filter === f.key}
             >
-              {f.label}
+              {t(f.label)}
               <span className="worker-chip-count">({f.count})</span>
             </button>
           ))}
@@ -172,15 +174,15 @@ export default function Antrian() {
         <>
       <div className="stat-cards">
         <div className="stat-card">
-          <span className="stat-card-label">Dalam Antrian</span>
+          <span className="stat-card-label">{t('Dalam Antrian')}</span>
           <span className="stat-card-value">{stats.count}</span>
         </div>
         <div className="stat-card">
-          <span className="stat-card-label">Belum Dibayar</span>
+          <span className="stat-card-label">{t('Belum Dibayar')}</span>
           <span className="stat-card-value stat-card-value-accent">{stats.unpaid}</span>
         </div>
         <div className="stat-card">
-          <span className="stat-card-label">Nilai Antrian</span>
+          <span className="stat-card-label">{t('Nilai Antrian')}</span>
           <span className="stat-card-value">{formatRupiah(stats.revenue)}</span>
         </div>
       </div>
@@ -188,13 +190,13 @@ export default function Antrian() {
       <div className="stat-cards">
         <div className="stat-card">
           <span className="stat-card-label">
-            <span className="status-badge status-created">Belum Diproses</span>
+            <span className="status-badge status-created">{t('Belum Diproses')}</span>
           </span>
           <span className="stat-card-value">{stats.belumDiproses}</span>
         </div>
         <div className="stat-card">
           <span className="stat-card-label">
-            <span className="status-badge status-diproses">Diproses</span>
+            <span className="status-badge status-diproses">{t('Diproses')}</span>
           </span>
           <span className="stat-card-value">{stats.diproses}</span>
         </div>
@@ -212,13 +214,15 @@ export default function Antrian() {
         <div className="overdue-alert" role="alert">
           <span className="overdue-alert-icon">⚠️</span>
           <span>
-            {overdueTreatments.length} transaksi sudah {TASK_REMINDER_DAYS} hari atau lebih belum
-            selesai — segera tindak lanjuti:{' '}
-            {overdueTreatments.map((t, i) => (
-              <span key={t.id}>
+            {t('{count} transaksi sudah {days} hari atau lebih belum selesai — segera tindak lanjuti:', {
+              count: overdueTreatments.length,
+              days: TASK_REMINDER_DAYS,
+            })}{' '}
+            {overdueTreatments.map((row, i) => (
+              <span key={row.id}>
                 {i > 0 && ', '}
-                <Link to={`/treatment/${t.id}`} className="overdue-alert-link">
-                  {ticketLabel(t)}
+                <Link to={`/treatment/${row.id}`} className="overdue-alert-link">
+                  {ticketLabel(row)}
                 </Link>
               </span>
             ))}
@@ -226,18 +230,18 @@ export default function Antrian() {
         </div>
       )}
 
-      {error && <p className="form-error">{error}</p>}
-      {loading && <p className="riwayat-loading">Memuat...</p>}
+      {error && <p className="form-error">{t(error)}</p>}
+      {loading && <p className="riwayat-loading">{t('Memuat...')}</p>}
 
       {!loading && workerView && visibleQueue.length > 0 && (
         <div className="queue-cards">
-          {visibleQueue.map((t) => (
+          {visibleQueue.map((row) => (
             <QueueCard
-              key={t.id}
-              treatment={t}
-              statusLabel={STATUS_LABELS[t.status] || t.status}
-              hasPhoto={Boolean(photoMap[t.id])}
-              busy={busyId === t.id}
+              key={row.id}
+              treatment={row}
+              statusLabel={t(STATUS_LABELS[row.status] || row.status)}
+              hasPhoto={Boolean(photoMap[row.id])}
+              busy={busyId === row.id}
               onUploaded={markPhotoUploaded}
               onAdvance={handleAdvance}
               onPay={handlePay}
@@ -249,62 +253,65 @@ export default function Antrian() {
       {!loading && workerView && visibleQueue.length === 0 && !error && (
         <p className="riwayat-empty">
           {queue.length === 0
-            ? 'Tidak ada antrian aktif — semua transaksi sudah selesai'
-            : 'Tidak ada transaksi di daftar ini'}
+            ? t('Tidak ada antrian aktif — semua transaksi sudah selesai')
+            : t('Tidak ada transaksi di daftar ini')}
         </p>
       )}
 
       {!loading && queue.length > 0 && !workerView && (
         <div className="riwayat-table antrian-table">
           <div className="riwayat-table-row riwayat-table-head">
-            <span>Layanan</span>
-            <span>Merek</span>
-            <span>Staf</span>
-            <span>Status</span>
-            <span>Bayar</span>
-            <span>Waktu</span>
-            <span>Bukti Foto</span>
+            <span>{t('Layanan')}</span>
+            <span>{t('Merek')}</span>
+            <span>{t('Staf')}</span>
+            <span>{t('Status')}</span>
+            <span>{t('Bayar')}</span>
+            <span>{t('Waktu')}</span>
+            <span>{t('Bukti Foto')}</span>
           </div>
-          {queue.map((t) => {
-            const overdue = isOverdue(t.created_at)
+          {queue.map((row) => {
+            const overdue = isOverdue(row.created_at)
             return (
             <div
-              key={t.id}
+              key={row.id}
               className={`riwayat-table-row ${overdue ? 'overdue' : ''}`}
               role="link"
               tabIndex={0}
-              onClick={() => navigate(`/treatment/${t.id}`)}
-              onKeyDown={(e) => e.key === 'Enter' && navigate(`/treatment/${t.id}`)}
+              onClick={() => navigate(`/treatment/${row.id}`)}
+              onKeyDown={(e) => e.key === 'Enter' && navigate(`/treatment/${row.id}`)}
             >
-              <span className="riwayat-service">{t.serviceSummary || '-'}</span>
+              <span className="riwayat-service">{row.serviceSummary || '-'}</span>
               <span className="antrian-vehicle-cell">
-                <span className="antrian-vehicle">{t.treatment_type || '-'}</span>
-                {t.plate_number && <span className="antrian-vehicle-plate">{t.plate_number}</span>}
+                <span className="antrian-vehicle">{row.treatment_type || '-'}</span>
+                {row.plate_number && <span className="antrian-vehicle-plate">{row.plate_number}</span>}
               </span>
-              <span>{t.pic || '-'}</span>
-              <span className={`status-badge status-${t.status}`}>
-                {STATUS_LABELS[t.status] || t.status}
+              <span>{row.pic || '-'}</span>
+              <span className={`status-badge status-${row.status}`}>
+                {t(STATUS_LABELS[row.status] || row.status)}
               </span>
               <span
                 className={`status-badge ${
-                  t.isPaymentVerified ? 'status-closed' : t.isPaid ? 'status-diproses' : 'status-created'
+                  row.isPaymentVerified ? 'status-closed' : row.isPaid ? 'status-diproses' : 'status-created'
                 }`}
-                title={t.isPaid && !t.isPaymentVerified ? 'Bukti pembayaran belum diunggah' : undefined}
+                title={row.isPaid && !row.isPaymentVerified ? t('Bukti pembayaran belum diunggah') : undefined}
               >
-                {t.isPaymentVerified ? 'Lunas' : t.isPaid ? 'Tanpa Bukti' : 'Belum'}
+                {row.isPaymentVerified ? t('Lunas') : row.isPaid ? t('Tanpa Bukti') : t('Belum')}
               </span>
               <span>
-                {formatDateTime(t.created_at)}
+                {formatDateTime(row.created_at)}
                 {overdue && (
-                  <span className="overdue-badge" title={`Sudah ${daysOpen(t.created_at)} hari belum selesai`}>
-                    ⚠️ {daysOpen(t.created_at)} hari
+                  <span
+                    className="overdue-badge"
+                    title={t('Sudah {days} hari belum selesai', { days: daysOpen(row.created_at) })}
+                  >
+                    ⚠️ {t('{days} hari', { days: daysOpen(row.created_at) })}
                   </span>
                 )}
               </span>
               <span>
                 <WashProofButton
-                  treatmentId={t.id}
-                  hasPhoto={Boolean(photoMap[t.id])}
+                  treatmentId={row.id}
+                  hasPhoto={Boolean(photoMap[row.id])}
                   onUploaded={markPhotoUploaded}
                 />
               </span>
@@ -314,7 +321,7 @@ export default function Antrian() {
         </div>
       )}
       {!loading && !workerView && queue.length === 0 && !error && (
-        <p className="riwayat-empty">Tidak ada antrian aktif — semua transaksi sudah selesai</p>
+        <p className="riwayat-empty">{t('Tidak ada antrian aktif — semua transaksi sudah selesai')}</p>
       )}
     </div>
   )
