@@ -13,6 +13,7 @@ import { findDefaultQcStaff } from '../lib/staffDefaults'
 import { useAuth } from '../context/useAuth'
 import { isStaff } from '../lib/roles'
 import { useLanguage } from '../context/useLanguage'
+import { translateServiceName } from '../lib/i18n'
 
 // Workers build a ticket one page at a time — items, customer, confirmation —
 // while the desk keeps the single two-column screen. Both share the same state
@@ -24,8 +25,14 @@ const WIZARD_STEPS = [
   { number: 3, label: 'Konfirmasi' },
 ]
 
+// Service lines are translated for display; shelf items (serviceId == null)
+// are shop goods with free-form names and show as stored.
+function lineName(tService, item) {
+  return item.serviceId != null ? tService(item.serviceName) : item.serviceName
+}
+
 function TicketLines({ items, emptyText, invalid = false, onQuantityChange, onRemove }) {
-  const { t } = useLanguage()
+  const { t, tService } = useLanguage()
   if (items.length === 0) {
     return (
       <p className={`ticket-lines-empty ${invalid ? 'is-invalid' : ''}`} data-field="items">
@@ -39,7 +46,7 @@ function TicketLines({ items, emptyText, invalid = false, onQuantityChange, onRe
       {items.map((item) => (
         <div key={item.key} className="ticket-line">
           <div className="ticket-line-info">
-            <span className="ticket-line-name">{item.serviceName}</span>
+            <span className="ticket-line-name">{lineName(tService, item)}</span>
             <span className="ticket-line-unit">
               {formatRupiah(item.unitPrice)} / {t('item')}
               {item.maxQuantity != null && ` · ${t('stok {count}', { count: item.maxQuantity })}`}
@@ -108,7 +115,7 @@ function vehicleFieldLabel(t, field, vehicleSlots, index) {
   return t('{field} Kendaraan {number} — {service}', {
     field: t(field),
     number: index + 1,
-    service: `${slot.serviceName}${slot.unitLabel}`,
+    service: `${translateServiceName(slot.serviceName)}${slot.unitLabel}`,
   })
 }
 
@@ -290,7 +297,7 @@ function TicketSummary({ subtotal, discountValue, total }) {
 
 export default function TransaksiBaru() {
   const { profile } = useAuth()
-  const { t } = useLanguage()
+  const { t, tService } = useLanguage()
   const navigate = useNavigate()
   // Staff get the phone wizard; supervisors/admin keep the desk layout.
   const workerView = isStaff(profile)
@@ -705,6 +712,7 @@ export default function TransaksiBaru() {
               selectedItems={selectedItems}
               onAdd={addService}
               priceMode={priceMode}
+              worker
             />
 
             <h2 className="transaksi-section-label">{t('Barang')}</h2>
@@ -812,7 +820,7 @@ export default function TransaksiBaru() {
                 {selectedItems.map((item) => (
                   <li key={item.key} className="worker-wizard-review-item">
                     <span className="worker-wizard-review-qty">{item.quantity}×</span>
-                    <span className="worker-wizard-review-name">{item.serviceName}</span>
+                    <span className="worker-wizard-review-name">{lineName(tService, item)}</span>
                     <span className="worker-wizard-review-price">
                       {formatRupiah(item.unitPrice * item.quantity)}
                     </span>

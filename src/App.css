@@ -1757,6 +1757,154 @@
   transform: rotate(-135deg) translate(-2px, -2px);
 }
 
+/* ---- service menu: section tiles + popup ----
+   The ticket picker lists sections only (Cuci Motor, Poles Mobil, …) and
+   opens the matching cards in a popup. Katalog keeps the collapsible
+   sections above; only Transaksi Baru uses these tiles. */
+.service-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.service-menu-tile {
+  position: relative;
+  min-height: 74px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid var(--pos-border);
+  border-radius: 12px;
+  background: var(--pos-surface);
+  color: var(--pos-text);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.service-menu-tile:hover {
+  border-color: var(--pos-blue);
+}
+
+/* A section that has lines on the ticket reads as active at a glance. */
+.service-menu-tile.has-selection {
+  border-color: var(--pos-blue);
+  background: var(--pos-blue-lighter);
+}
+
+.service-menu-tile-label {
+  font-size: 15px;
+  font-weight: 700;
+  /* Clears the count badge in the corner. */
+  padding-right: 26px;
+}
+
+.service-menu-tile-meta {
+  font-size: 12.5px;
+  color: var(--pos-text-muted);
+}
+
+.service-menu-tile .service-category-count {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+/* Wider than the confirm dialogs .start-modal was written for — it holds a
+   card grid — and capped in height so a long section scrolls inside the
+   popup instead of running off the screen. */
+/* The popup is held inside the band left by the app's own fixed chrome, and
+   the card grid scrolls within it. The overlay's padding is what reserves
+   that band: the modal's max-height is a percentage, so it resolves against
+   the overlay's content box — padding already subtracted. */
+.service-menu-overlay {
+  padding: 14px;
+  /* Over the tab bar (30) and action bar (25) as well as the page. */
+  z-index: 1100;
+}
+
+/* Scroll is frozen behind the popup: the body for the desk layout, and the
+   worker UI's own scroll container, which is what actually scrolls there. */
+body.service-menu-open {
+  overflow: hidden;
+}
+
+body.service-menu-open .worker-content {
+  overflow: hidden;
+}
+
+/* Worker UI: below the fixed top bar and the wizard's step row, above the
+   action bar stacked on the tab bar. Flagged by a class rather than a
+   `.worker-ui` ancestor, because the popup is portalled out to <body>. */
+.service-menu-overlay-worker {
+  padding-top: calc(124px + env(safe-area-inset-top));
+  padding-bottom: calc(128px + env(safe-area-inset-bottom));
+}
+
+/* Qualified with .start-modal so these win over its own narrower max-width,
+   which is defined further down the file. */
+.start-modal.service-menu-modal {
+  max-width: 560px;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Everything but the grid keeps its natural height... */
+.service-menu-modal > .start-modal-title,
+.service-menu-modal > .start-modal-hint,
+.service-menu-modal > .start-modal-actions {
+  flex: none;
+}
+
+/* ...and the grid takes the rest and scrolls. min-height: 0 is what makes
+   that work: a flex item defaults to min-height: auto, so without it the
+   grid refuses to shrink and pushes the popup past its own max-height —
+   which is how the long sections ended up clipped top and bottom. */
+.service-menu-modal-grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Room for the qty badge, which sits 8px outside each card's corner. */
+  padding: 8px;
+  margin: -8px;
+}
+
+.service-menu-modal .start-modal-actions {
+  margin-top: 16px;
+}
+
+/* Kembali left, Selesai right — the confirm dialogs' actions row packs both
+   to the right, which here read as two ways of saying the same thing. */
+.service-menu-modal-actions {
+  justify-content: space-between;
+}
+
+/* The portal lands outside .worker-ui, so the worker card sizing has to be
+   restated here rather than inherited from it. */
+.service-menu-overlay-worker .service-card {
+  padding: 14px 12px;
+  min-height: 84px;
+  border-radius: 12px;
+}
+
+.service-menu-overlay-worker .service-card-name {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+@media (max-width: 560px) {
+  .service-menu-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 /* Katalog: the table sits inside the collapsible card, so drop its own
    border/radius and just divide it from the header */
 .service-category .katalog-category-panel {
@@ -3369,7 +3517,9 @@
 
 .queue-card-head {
   display: flex;
-  align-items: center;
+  /* The badge column is taller than one pill now — top-align it with the
+     heading rather than centring it against the vehicle/plate block. */
+  align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
@@ -3477,11 +3627,17 @@
   margin-right: 7px;
 }
 
-.queue-card-tags {
+/* The card's badge stack: status on top, payment under it, overdue last.
+   align-items keeps each pill only as wide as its own label while they all
+   hang off the card's right edge; flex-shrink: 0 stops a long status label
+   being squeezed by the heading next to it. */
+.queue-card-badges {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 7px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  flex-shrink: 0;
+  text-align: right;
 }
 
 .queue-card-actions {

@@ -51,6 +51,39 @@ export function translate(text, vars, language = currentLanguage) {
   return interpolate(translated, vars)
 }
 
+// Service names come from the database, so they can't be lookup keys like UI
+// strings — but the menu follows a fixed shape ("Mobil Premium Wash - S",
+// "Helm Spa - Branded"), so English mode can translate the Indonesian parts:
+// the vehicle word in front and "Ojek Online". The five pre-migration-011
+// generic services are fully Indonesian and are matched whole. Display only:
+// treatment_items keeps the stored (Indonesian) name, and anything that
+// doesn't match is shown exactly as stored.
+const SERVICE_NAMES_EN = {
+  'cuci motor': 'Motorbike Wash',
+  'cuci mobil': 'Car Wash',
+  'cuci helm': 'Helmet Wash',
+  'poles body': 'Body Polish',
+  'coating kaca': 'Glass Coating',
+}
+
+const SERVICE_VEHICLES_EN = { motor: 'Motorbike', mobil: 'Car', helm: 'Helmet' }
+
+export function translateServiceName(name, language = currentLanguage) {
+  if (language !== 'en' || !name) return name
+  const trimmed = name.trim()
+  const whole = SERVICE_NAMES_EN[trimmed.toLowerCase().replace(/\s+/g, ' ')]
+  if (whole) return whole
+
+  // "Base - Variant": only the base is Indonesian; sizes (S/M/L/XL) and
+  // Branded / Non Branded are already English.
+  const [base, ...variant] = trimmed.split(' - ')
+  const words = base.split(/\s+/)
+  const vehicle = SERVICE_VEHICLES_EN[words[0].toLowerCase()]
+  if (vehicle) words[0] = vehicle
+  const translatedBase = words.join(' ').replace(/\bOjek Online\b/i, 'Ride-Hailing')
+  return [translatedBase, ...variant].join(' - ')
+}
+
 // Locale for dates and times. Money is deliberately NOT localized — Rupiah is
 // always shown as "Rp 15.000" (see formatRupiah), whatever the UI language.
 export function dateLocale(language = currentLanguage) {

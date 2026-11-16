@@ -5,6 +5,7 @@ import {
   readStoredLanguage,
   setCurrentLanguage,
   translate,
+  translateServiceName,
 } from '../lib/i18n'
 
 // Bahasa / English switch. Remembered per device, like the theme — the shop
@@ -37,6 +38,8 @@ export function LanguageProvider({ children }) {
       setLanguage,
       toggleLanguage,
       t: (text, vars) => translate(text, vars, language),
+      // Service names from the database — see translateServiceName.
+      tService: (name) => translateServiceName(name, language),
     }),
     [language, setLanguage, toggleLanguage]
   )

@@ -403,4 +403,10 @@ export const en = {
   "Bukti pembayaran belum diunggah — transaksi belum bisa ditutup": "Payment proof not uploaded yet — the transaction cannot be closed",
   "Pembayaran belum dicatat — transaksi belum bisa ditutup": "Payment not recorded yet — the transaction cannot be closed",
 
+  // ---- Service menu popup (Transaksi Baru) ----
+  "{kind} {vehicle}": "{vehicle} {kind}",
+  "Cuci": "Wash",
+  "Poles": "Polish",
+  "Coating": "Coating",
+  "Ketuk layanan untuk memilih, lalu tekan Selesai untuk menambah ke transaksi.": "Tap a service to pick it, then press Done to add it to the transaction.",
 }

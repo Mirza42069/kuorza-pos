@@ -39,8 +39,15 @@ with no English entry simply shows in Indonesian. Placeholders are
   from `src/lib/i18n.js` instead of the hook
 - Don't name a `.map()` variable `t` in a component that uses `t()`
 - Money is never localized: always `formatRupiah` → "Rp 15.000"
-- Data from the database (service names, customer names, notes) and messages
-  raised by Postgres triggers/Edge Functions are shown as stored
+- Data from the database (customer names, notes, shelf item names) and
+  messages raised by Postgres triggers/Edge Functions are shown as stored
+- Service names are the one exception: in English mode they're translated
+  for display with `tService()` (`translateServiceName()` in
+  `src/lib/i18n.js`) — the vehicle prefix (Motor/Mobil/Helm), "Ojek Online",
+  and the five old generic names matched whole. What's saved to
+  `treatment_items.service_name` stays the stored Indonesian name. A new
+  service that doesn't follow the "Vehicle Treatment - Size" naming shows as
+  stored. Currently applied on Transaksi Baru only
 
 Code — variable names, function names, comments — stays in English.
 
