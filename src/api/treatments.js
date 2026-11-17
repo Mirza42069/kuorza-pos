@@ -111,35 +111,17 @@ export async function checkoutTreatment(fields, { paymentMethod, proofFile }) {
 }
 
 // Settle payment on a treatment that was queued without paying up front.
-// If work hasn't started yet (still 'created'), this also advances status to
-// 'paid'. If work is further along (e.g. 'diproses' or 'selesai'), the status is
-// left alone — payment and work progress are independent once the job is
-// moving — and a plain log entry records that payment came in.
-export async function recordPayment(treatmentId, { amount, paymentMethod }) {
-  const { error: paymentError } = await supabase.from('payments').insert({
-    treatment_id: treatmentId,
-    amount,
-    payment_method: paymentMethod,
+// Done by the record_payment() RPC (migration 019): the amount is always the
+// ticket's stored total, never sent from here, and a ticket takes one
+// payment. If work hasn't started yet (still 'created'), it also advances
+// status to 'paid'; further along, status is left alone and a log entry
+// records that payment came in.
+export async function recordPayment(treatmentId, { paymentMethod }) {
+  const { error } = await supabase.rpc('record_payment', {
+    p_treatment_id: treatmentId,
+    p_payment_method: paymentMethod,
   })
-  if (paymentError) throw paymentError
-
-  const { data: current, error: fetchError } = await supabase
-    .from('treatments')
-    .select('status')
-    .eq('id', treatmentId)
-    .single()
-  if (fetchError) throw fetchError
-
-  if (current.status === 'created') {
-    const { error: updateError } = await supabase
-      .from('treatments')
-      .update({ status: 'paid', updated_at: new Date().toISOString() })
-      .eq('id', treatmentId)
-    if (updateError) throw updateError
-    await logStatusChange(treatmentId, 'paid')
-  } else {
-    await logAction(treatmentId, 'payment recorded')
-  }
+  if (error) throw error
 }
 
 // Records the payment and, for QRIS/transfer, attaches the proof photo in one
@@ -147,11 +129,11 @@ export async function recordPayment(treatmentId, { amount, paymentMethod }) {
 // the photo upload fails after that, the payment stays recorded but
 // unverified — the screens then offer "Foto Bukti Bayar" to retry, and the
 // ticket can't close in the meantime.
-export async function recordVerifiedPayment(treatmentId, { amount, paymentMethod, proofFile }) {
+export async function recordVerifiedPayment(treatmentId, { paymentMethod, proofFile }) {
   if (paymentNeedsProof(paymentMethod) && !proofFile) {
     throw new Error('Foto bukti pembayaran wajib untuk QRIS/transfer')
   }
-  await recordPayment(treatmentId, { amount, paymentMethod })
+  await recordPayment(treatmentId, { paymentMethod })
   if (proofFile) await uploadPaymentProofPhoto(treatmentId, proofFile)
 }
 

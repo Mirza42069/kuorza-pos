@@ -112,7 +112,7 @@ export default function Antrian() {
       if (proofOnly) {
         await uploadPaymentProofPhoto(treatment.id, proofFile)
       } else {
-        await recordVerifiedPayment(treatment.id, { amount: treatment.total, paymentMethod, proofFile })
+        await recordVerifiedPayment(treatment.id, { paymentMethod, proofFile })
       }
     } finally {
       await loadQueue()

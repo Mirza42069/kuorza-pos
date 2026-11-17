@@ -521,6 +521,16 @@ All SQL migrations have been run against the Supabase project in order:
 - 018_create_treatment_rpc — `create_treatment()` RPC (SECURITY DEFINER,
   active-user gated, EXECUTE revoked from anon): whole ticket in one
   transaction with server-side pricing. SQL kept in `supabase/migrations/`.
-  **018b_lock_direct_ticket_inserts is NOT applied yet** — it drops the
-  direct INSERT policies on `treatments`/`treatment_items` and must run only
-  after the frontend using the RPC is deployed
+- 018b_lock_direct_ticket_inserts — dropped the direct INSERT policies on
+  `treatments`/`treatment_items`, so `create_treatment()` is the only way to
+  create a ticket or its lines
+- 019_protect_ticket_updates — `treatments_protect_direct_updates` trigger on
+  direct client updates (`current_user = 'authenticated'` only): closed/voided
+  tickets are frozen, status can't return to 'created', 'paid' needs a
+  payment, 'voided' needs none, 'selesai' needs wash + QC staff. (Column
+  grants already limited direct updates to status/wash_staff/qc_staff/
+  updated_at.) Plus `record_payment(p_treatment_id, p_payment_method)` RPC:
+  amount is always the ticket's stored total, one payment per ticket.
+  **019b_lock_direct_payment_inserts is NOT applied yet** — drops the direct
+  INSERT policy on `payments`; run only after the frontend calling
+  `record_payment()` is deployed

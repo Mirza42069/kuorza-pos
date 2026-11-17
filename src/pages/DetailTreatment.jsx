@@ -105,7 +105,7 @@ export default function DetailTreatment() {
       if (payMode === 'proof') {
         await uploadPaymentProofPhoto(id, proofFile)
       } else {
-        await recordVerifiedPayment(id, { amount: treatment.total, paymentMethod, proofFile })
+        await recordVerifiedPayment(id, { paymentMethod, proofFile })
       }
       setPayMode(null)
     } catch (err) {

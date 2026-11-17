@@ -1,8 +1,6 @@
 -- 018b_lock_direct_ticket_inserts
 --
--- NOT YET APPLIED. Run this only AFTER the frontend that calls
--- create_treatment() is deployed to Vercel — the old build inserts into these
--- tables directly and would stop being able to create tickets.
+-- Applied 2026-11-17, after the RPC frontend was deployed.
 --
 -- Until this runs, create_treatment() exists but nothing stops a signed-in
 -- user from bypassing it with direct inserts (and their own prices). After
