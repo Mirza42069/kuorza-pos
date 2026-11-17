@@ -624,9 +624,9 @@ export default function TransaksiBaru() {
         // wash_staff. Plate search (ilike) still finds each one.
         plateNumber: needsVehicle ? currentPlates.join(', ') : null,
         treatmentType: needsVehicle ? treatmentTypeValue : null,
-        pic: profile.full_name,
         notes: notes.trim() || null,
         items: selectedItems,
+        priceMode,
         discount: 0, // was: discountValue
         washStaffNames: washStaff,
         qcStaff: qcStaff ?? null,
@@ -653,7 +653,6 @@ export default function TransaksiBaru() {
           customerPhone: customerPhone.trim(),
           plateNumber: null,
           treatmentType: null,
-          pic: profile.full_name,
           notes: notes.trim() || null,
           items: selectedItems,
           discount: 0,

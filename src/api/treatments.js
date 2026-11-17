@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase'
 import { formatStaffNames, parseStaffNames } from '../lib/staffNames'
 import { getBusinessDayRange } from '../lib/dateRange'
 import { uploadPaymentProofPhoto } from './photos'
+import { PRICE_MODES } from '../lib/servicePrice'
 
 // Payment verification: a ticket can only be closed once its payment is
 // verified. Cash is verified the moment it's recorded — the money is in hand.
@@ -18,34 +19,6 @@ export function isPaymentVerified(payment) {
   return !paymentNeedsProof(payment.payment_method) || Boolean(payment.proof_url)
 }
 
-function generateTreatmentCode() {
-  const now = new Date()
-  const y = String(now.getFullYear()).slice(-2)
-  const m = String(now.getMonth() + 1).padStart(2, '0')
-  const d = String(now.getDate()).padStart(2, '0')
-  const rand = Math.floor(1000 + Math.random() * 9000)
-  return `ND${y}${m}${d}-${rand}`
-}
-
-// The 4-digit random suffix is only ~9000-wide per day, so two tickets on a
-// busy day can land on the same code — treatment_code is UNIQUE, so that
-// insert fails. That's a collision, not a real error, so retry with a fresh
-// code instead of surfacing a raw DB error at the counter.
-const MAX_CODE_ATTEMPTS = 5
-
-async function insertTreatment(fields) {
-  for (let attempt = 1; attempt <= MAX_CODE_ATTEMPTS; attempt++) {
-    const { data, error } = await supabase
-      .from('treatments')
-      .insert({ ...fields, treatment_code: generateTreatmentCode() })
-      .select()
-      .single()
-    if (!error) return data
-    const isCodeCollision = error.code === '23505' && error.message?.includes('treatment_code')
-    if (!isCodeCollision || attempt === MAX_CODE_ATTEMPTS) throw error
-  }
-}
-
 async function logAction(treatmentId, action) {
   const { error } = await supabase.from('treatment_logs').insert({ treatment_id: treatmentId, action })
   if (error) throw error
@@ -59,93 +32,52 @@ async function logStatusChange(treatmentId, status) {
 // before anyone pays. Pass paymentMethod only when the customer is paying
 // up front; omit it to leave the treatment at status 'created' with no
 // payment row, to be settled later via recordPayment().
+//
+// The whole ticket is written by the create_treatment() RPC (migration 018)
+// in one transaction: it looks prices up from services/shelf_items itself,
+// so only ids, quantities and the price mode are sent — never amounts. PIC
+// is the signed-in user. If stock runs out mid-submit, nothing is saved.
 export async function createTreatment({
   customerName,
   customerPhone,
   plateNumber,
   treatmentType,
-  pic,
   notes,
   items,
+  priceMode = PRICE_MODES.PROMO,
   discount = 0,
   paymentMethod,
   washStaffNames,
   qcStaff,
 }) {
-  const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
-  const total = Math.max(subtotal - discount, 0)
-  // Crew can be assigned up front from Transaksi Baru, or left empty and
-  // picked later (Mulai Proses / Detail Transaksi).
-  const washStaff = formatStaffNames(washStaffNames)
-  const qc = qcStaff?.trim() || null
-
-  const treatment = await insertTreatment({
-    customer_name: customerName,
-    customer_phone: customerPhone,
-    // Null for services with no vehicle involved (e.g. Cuci Helm) — the
-    // column is nullable as of migration 006.
-    plate_number: plateNumber ? plateNumber.toUpperCase().trim() : null,
-    treatment_type: treatmentType,
-    pic,
-    status: 'created',
-    notes,
-    subtotal,
-    discount,
-    total,
-    wash_staff: washStaff,
-    qc_staff: qc,
+  const { data, error } = await supabase.rpc('create_treatment', {
+    p_customer_name: customerName,
+    p_customer_phone: customerPhone,
+    p_items: items.map((item) =>
+      item.shelfItemId != null
+        ? { shelf_item_id: item.shelfItemId, quantity: item.quantity }
+        : { service_id: item.serviceId, quantity: item.quantity }
+    ),
+    // Null for services with no vehicle involved (e.g. Cuci Helm); the RPC
+    // uppercases and trims it.
+    p_plate_number: plateNumber || null,
+    p_treatment_type: treatmentType || null,
+    p_notes: notes || null,
+    p_price_mode: priceMode,
+    p_discount: discount,
+    // Crew can be assigned up front from Transaksi Baru, or left empty and
+    // picked later (Mulai Proses / Detail Transaksi).
+    p_wash_staff: formatStaffNames(washStaffNames),
+    p_qc_staff: qcStaff?.trim() || null,
+    p_payment_method: paymentMethod || null,
   })
-
-  await logStatusChange(treatment.id, 'created')
-  if (washStaff) await logAction(treatment.id, `wash staff assigned: ${washStaff}`)
-  if (qc) await logAction(treatment.id, `qc staff assigned: ${qc}`)
-
-  const { error: itemsError } = await supabase.from('treatment_items').insert(
-    items.map((item) => ({
-      treatment_id: treatment.id,
-      service_name: item.serviceName,
-      unit_price: item.unitPrice,
-      quantity: item.quantity,
-      subtotal: item.unitPrice * item.quantity,
-      // Set for goods off the shelf, null for services. A database trigger
-      // draws the stock down from this — see migration 010.
-      shelf_item_id: item.shelfItemId ?? null,
-    }))
-  )
-  // The stock trigger rejects the whole insert if someone else sold the last
-  // one between loading the form and submitting. The treatment row already
-  // exists by then, so void it rather than leave an empty ticket sitting in
-  // the queue — treatments are never deleted (see CLAUDE.md).
-  if (itemsError) {
-    await voidTreatment(treatment.id).catch(() => {})
-    if (itemsError.message?.includes('Stok tidak mencukupi')) {
+  if (error) {
+    if (error.message?.includes('Stok tidak mencukupi')) {
       throw new Error('Stok barang tidak mencukupi — muat ulang halaman')
     }
-    throw itemsError
+    throw error
   }
-
-  if (!paymentMethod) {
-    return treatment
-  }
-
-  const { error: paymentError } = await supabase.from('payments').insert({
-    treatment_id: treatment.id,
-    amount: total,
-    payment_method: paymentMethod,
-  })
-  if (paymentError) throw paymentError
-
-  const { data: paidTreatment, error: updateError } = await supabase
-    .from('treatments')
-    .update({ status: 'paid', updated_at: new Date().toISOString() })
-    .eq('id', treatment.id)
-    .select()
-    .single()
-  if (updateError) throw updateError
-
-  await logStatusChange(treatment.id, 'paid')
-
-  return paidTreatment
+  return data
 }
 
 // Over-the-counter sale: a ticket with only shelf items has no work to queue,

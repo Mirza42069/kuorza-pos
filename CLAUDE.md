@@ -363,10 +363,11 @@ If something needs changing, edit the specific part that needs changing.
   ```
 
 ### Treatments
-- Creating a treatment requires three inserts in order:
-  1. Insert into `treatments` → get the id
-  2. Insert all items into `treatment_items` with that treatment_id
-  3. Insert into `payments` with that treatment_id
+- Creating a treatment goes through the `create_treatment()` RPC (migration
+  018), which writes `treatments`, `treatment_items`, the optional `payments`
+  row and the logs in one transaction. The client sends service/shelf item
+  ids, quantities and the price mode — never prices or totals; the RPC looks
+  them up and sets `pic` to the caller. Don't insert tickets directly
 - treatment_items stores name and price as snapshots — not live FKs to services
 - Never DELETE a treatment row — set status to 'voided' instead
 - Write to treatment_logs on every status change
@@ -517,3 +518,9 @@ All SQL migrations have been run against the Supabase project in order:
 - 017_service_price_editing — `set_service_prices()` RPC (SECURITY DEFINER,
   `is_supervisor()`-gated, EXECUTE revoked from anon) so supervisors set a
   service's normal and promo price together in Katalog
+- 018_create_treatment_rpc — `create_treatment()` RPC (SECURITY DEFINER,
+  active-user gated, EXECUTE revoked from anon): whole ticket in one
+  transaction with server-side pricing. SQL kept in `supabase/migrations/`.
+  **018b_lock_direct_ticket_inserts is NOT applied yet** — it drops the
+  direct INSERT policies on `treatments`/`treatment_items` and must run only
+  after the frontend using the RPC is deployed
