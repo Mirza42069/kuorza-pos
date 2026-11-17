@@ -51,8 +51,8 @@
   width: 40px;
   height: 40px;
   border-radius: var(--md-shape-full);
-  background: var(--md-primary-container);
-  color: var(--md-on-primary-container);
+  background: var(--md-surface-container-high);
+  color: var(--md-on-surface);
   display: inline-grid;
   place-items: center;
   font-size: 14px;
@@ -89,7 +89,7 @@
   display: flex;
   flex-direction: column;
   padding: 12px;
-  background: var(--md-surface-container-low);
+  background: var(--md-surface);
   z-index: 40;
 }
 
@@ -149,7 +149,7 @@
 
 .app-drawer-item.active {
   background: var(--md-secondary-container);
-  color: var(--md-on-secondary-container);
+  color: var(--md-primary);
   font-weight: 600;
 }
 
@@ -242,7 +242,7 @@
   flex: 1;
   width: 100%;
   max-width: 1440px;
-  padding: 8px 24px 40px;
+  padding: 16px 24px 40px;
   min-width: 0;
 }
 
@@ -272,7 +272,7 @@
   align-items: center;
   gap: 12px;
   padding: 0 12px 0 16px;
-  background: var(--md-surface-container);
+  background: var(--md-surface);
 }
 
 .worker-topbar .app-brand-mark {
@@ -312,7 +312,7 @@
   gap: 8px;
   height: calc(80px + env(safe-area-inset-bottom));
   padding: 12px 8px env(safe-area-inset-bottom);
-  background: var(--md-surface-container);
+  background: var(--md-surface);
 }
 
 .worker-nav-item {
@@ -490,9 +490,8 @@
 /* Outlined */
 .btn-secondary,
 .worker-wizard-back {
-  background: transparent;
+  background: var(--md-surface-container-high);
   color: var(--md-primary);
-  box-shadow: inset 0 0 0 1px var(--md-outline);
 }
 
 /* Filled tonal */
@@ -557,8 +556,10 @@
 /* Segmented button (language, price mode, payment method) */
 .segmented {
   display: inline-flex;
+  padding: 3px;
+  gap: 2px;
   border-radius: var(--md-shape-full);
-  box-shadow: inset 0 0 0 1px var(--md-outline);
+  background: var(--md-surface-container-high);
   overflow: hidden;
 }
 
@@ -580,13 +581,14 @@
   white-space: nowrap;
 }
 
-.segmented-option + .segmented-option {
-  box-shadow: inset 1px 0 0 var(--md-outline);
+.segmented-option {
+  border-radius: var(--md-shape-full);
 }
 
 .segmented-option.active {
-  background: var(--md-secondary-container);
-  color: var(--md-on-secondary-container);
+  background: var(--md-surface);
+  color: var(--md-primary);
+  box-shadow: var(--md-elevation-1);
 }
 
 .segmented-option:disabled {
@@ -594,7 +596,7 @@
 }
 
 .language-toggle .segmented-option {
-  height: 32px;
+  height: 28px;
   min-width: 44px;
   padding: 0 12px;
   font-size: 12px;
@@ -642,8 +644,7 @@
   padding: 0 16px;
   border-radius: var(--md-shape-sm);
   border: 0;
-  box-shadow: inset 0 0 0 1px var(--md-outline-variant);
-  background: transparent;
+  background: var(--md-surface-container-high);
   color: var(--md-on-surface-variant);
   font-size: 14px;
   font-weight: 500;
@@ -961,7 +962,6 @@ input.is-invalid,
   height: 32px;
   padding: 0 12px 0 8px;
   border-radius: var(--md-shape-sm);
-  box-shadow: inset 0 0 0 1px var(--md-outline-variant);
   color: var(--md-on-surface);
   font-size: 14px;
   font-weight: 500;
@@ -1040,8 +1040,7 @@ input.is-invalid,
 .payment-form,
 .worker-wizard-card {
   border-radius: var(--md-shape-md);
-  background: var(--md-surface-container-lowest);
-  box-shadow: inset 0 0 0 1px var(--md-outline-variant);
+  background: var(--md-surface-container-low);
   padding: 20px;
 }
 
@@ -1051,8 +1050,7 @@ input.is-invalid,
 
 .riwayat-table {
   border-radius: var(--md-shape-md);
-  background: var(--md-surface-container-lowest);
-  box-shadow: inset 0 0 0 1px var(--md-outline-variant);
+  background: var(--md-surface-container-low);
   overflow-x: auto;
   margin-bottom: 24px;
 }
@@ -1323,10 +1321,14 @@ input.is-invalid,
   align-items: baseline;
   padding: 16px 20px;
   border-radius: var(--md-shape-lg);
-  background: var(--md-primary-container);
-  color: var(--md-on-primary-container);
+  background: var(--md-surface-container-low);
+  color: var(--md-on-surface-variant);
   font-size: 14px;
   font-weight: 500;
+}
+
+.payment-modal-total span:last-child {
+  color: var(--md-primary);
 }
 
 .payment-modal-total span:last-child {
@@ -1388,7 +1390,6 @@ input.is-invalid,
   border: 0;
   border-radius: var(--md-shape-md);
   background: var(--md-surface-container-low);
-  box-shadow: inset 0 0 0 1px var(--md-outline-variant);
   color: var(--md-on-surface);
 }
 
@@ -1399,8 +1400,8 @@ input.is-invalid,
   border-radius: var(--md-shape-md);
   display: grid;
   place-items: center;
-  background: var(--md-secondary-container);
-  color: var(--md-on-secondary-container);
+  background: var(--md-surface-container-high);
+  color: var(--md-on-surface-variant);
 }
 
 .service-menu-tile-label {
@@ -1416,9 +1417,8 @@ input.is-invalid,
 }
 
 .service-menu-tile.has-selection {
-  background: var(--md-primary-container);
-  box-shadow: none;
-  color: var(--md-on-primary-container);
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
 }
 
 .service-menu-tile.has-selection .service-menu-tile-icon {
@@ -1427,7 +1427,7 @@ input.is-invalid,
 }
 
 .service-menu-tile.has-selection .service-menu-tile-meta {
-  color: var(--md-on-primary-container);
+  color: var(--md-on-secondary-container);
 }
 
 .service-category-count,
@@ -1465,8 +1465,7 @@ input.is-invalid,
   text-align: left;
   border: 0;
   border-radius: var(--md-shape-md);
-  background: var(--md-surface-container-lowest);
-  box-shadow: inset 0 0 0 1px var(--md-outline-variant);
+  background: var(--md-surface-container-low);
   color: var(--md-on-surface);
 }
 
@@ -1504,9 +1503,8 @@ input.is-invalid,
 }
 
 .service-card.selected {
-  background: var(--md-primary-container);
-  color: var(--md-on-primary-container);
-  box-shadow: inset 0 0 0 2px var(--md-primary);
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
 }
 
 .service-card.sold-out {
@@ -1550,8 +1548,7 @@ body.service-menu-open {
 
 .service-category {
   border-radius: var(--md-shape-md);
-  background: var(--md-surface-container-lowest);
-  box-shadow: inset 0 0 0 1px var(--md-outline-variant);
+  background: var(--md-surface-container-low);
   overflow: hidden;
 }
 
@@ -1614,6 +1611,10 @@ body.service-menu-open {
   gap: 24px;
   padding: 24px 16px;
   background: var(--md-surface-container-low);
+}
+
+.login-card {
+  box-shadow: none;
 }
 
 .login-card {
@@ -1754,8 +1755,7 @@ body.service-menu-open {
   display: flex;
   flex-direction: column;
   border-radius: var(--md-shape-md);
-  background: var(--md-surface-container-lowest);
-  box-shadow: inset 0 0 0 1px var(--md-outline-variant);
+  background: var(--md-surface);
 }
 
 .ticket-line {
@@ -1792,7 +1792,6 @@ body.service-menu-open {
   display: inline-flex;
   align-items: center;
   border-radius: var(--md-shape-full);
-  box-shadow: inset 0 0 0 1px var(--md-outline-variant);
 }
 
 .ticket-line-qty button,
@@ -1839,7 +1838,7 @@ body.service-menu-open {
 .ticket-lines-empty {
   padding: 20px 16px;
   border-radius: var(--md-shape-md);
-  border: 1px dashed var(--md-outline-variant);
+  background: var(--md-surface-container-low);
   text-align: center;
   font-size: 14px;
   color: var(--md-on-surface-variant);
@@ -1856,7 +1855,6 @@ body.service-menu-open {
   flex-direction: column;
   gap: 8px;
   padding-top: 8px;
-  border-top: 1px solid var(--md-outline-variant);
   font-size: 14px;
   color: var(--md-on-surface-variant);
 }
@@ -2184,8 +2182,7 @@ body.service-menu-open {
 .queue-card {
   position: relative;
   border-radius: var(--md-shape-md);
-  background: var(--md-surface-container-lowest);
-  box-shadow: inset 0 0 0 1px var(--md-outline-variant);
+  background: var(--md-surface-container-low);
   overflow: hidden;
 }
 
@@ -2210,7 +2207,7 @@ body.service-menu-open {
 }
 
 .queue-card.overdue {
-  box-shadow: inset 0 0 0 1px var(--md-error);
+  background: #fff5f4;
 }
 
 .queue-card-main {
@@ -2310,8 +2307,9 @@ body.service-menu-open {
 }
 
 .worker-btn-blue {
-  background: var(--md-secondary-container);
-  color: var(--md-on-secondary-container);
+  background: var(--md-surface);
+  color: var(--md-primary);
+  box-shadow: var(--md-elevation-1);
 }
 
 .worker-btn-green {
@@ -2322,9 +2320,8 @@ body.service-menu-open {
 .worker-btn-ghost {
   flex: 0 0 48px;
   padding: 0;
-  background: transparent;
+  background: var(--md-surface-container-high);
   color: var(--md-on-surface-variant);
-  box-shadow: inset 0 0 0 1px var(--md-outline-variant);
 }
 
 .worker-btn-static {
@@ -2657,7 +2654,6 @@ body.service-menu-open {
   justify-content: space-between;
   padding: 16px 20px 20px;
   background: var(--md-surface-container-low);
-  border-top: 1px solid var(--md-outline-variant);
   font-size: 14px;
 }
 
@@ -2762,7 +2758,7 @@ body.service-menu-open {
   width: 100%;
   max-width: 48px;
   border-radius: var(--md-shape-sm) var(--md-shape-sm) 2px 2px;
-  background: var(--md-secondary-container);
+  background: var(--md-surface-container-highest);
   transition: height var(--md-duration-long) var(--md-ease-emphasized-decelerate);
 }
 
@@ -2915,11 +2911,11 @@ body.service-menu-open {
 }
 
 .worker-leaderboard-row.tier-1 {
-  background: var(--md-primary-container);
+  background: var(--md-secondary-container);
 }
 
-.worker-leaderboard-row.is-you {
-  box-shadow: inset 0 0 0 2px var(--md-primary);
+.worker-leaderboard-row.is-you .worker-leaderboard-name {
+  color: var(--md-primary);
 }
 
 .worker-rank-badge {
@@ -2942,8 +2938,8 @@ body.service-menu-open {
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  background: var(--md-secondary-container);
-  color: var(--md-on-secondary-container);
+  background: var(--md-surface-container-high);
+  color: var(--md-on-surface);
   font-size: 14px;
   font-weight: 500;
 }
@@ -3022,8 +3018,8 @@ body.service-menu-open {
   display: grid;
   place-items: center;
   border-radius: var(--md-shape-sm);
-  background: var(--md-secondary-container);
-  color: var(--md-on-secondary-container);
+  background: var(--md-surface-container-high);
+  color: var(--md-on-surface-variant);
 }
 
 .katalog-service-icon svg {
@@ -3144,7 +3140,6 @@ body.service-menu-open {
   gap: 16px;
   padding: 16px 20px 20px;
   background: var(--md-surface-container-low);
-  border-top: 1px solid var(--md-outline-variant);
 }
 
 .upah-breakdown {

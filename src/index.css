@@ -1,20 +1,22 @@
 /* =========================================================================
-   Material 3 foundation — light scheme, green seed.
-   Color roles follow the M3 baseline tonal palette for a green source
-   (Material Theme Builder, seed #386A20). Component styles in App.css only
-   ever read these roles, never raw hex values.
+   Material 3 foundation — light scheme, white + green.
+   Surfaces, outlines and secondary roles are neutral (white and true grays);
+   green is reserved for the accent roles: primary actions, selection,
+   totals, the brand mark. Component styles in App.css only ever read these
+   roles, never raw hex values.
    ========================================================================= */
 
 :root {
   /* ---- Color roles ---- */
-  --md-primary: #386a20;
+  --md-primary: #2e7d32;
   --md-on-primary: #ffffff;
-  --md-primary-container: #b8f397;
-  --md-on-primary-container: #072100;
-  --md-secondary: #55624c;
+  --md-primary-container: #dcf1d6;
+  --md-on-primary-container: #0b3a10;
+  --md-secondary: #5f6368;
   --md-on-secondary: #ffffff;
-  --md-secondary-container: #d9e7cb;
-  --md-on-secondary-container: #131f0d;
+  /* Selection tint: a pale green, the only green on a selected surface. */
+  --md-secondary-container: #e7f4e3;
+  --md-on-secondary-container: #1b4d20;
   --md-tertiary: #386667;
   --md-on-tertiary: #ffffff;
   --md-tertiary-container: #bbebec;
@@ -29,30 +31,30 @@
   --md-warning-container: #ffdea6;
   --md-on-warning-container: #271900;
 
-  --md-surface: #f8faf0;
-  --md-surface-dim: #d8dbd0;
-  --md-surface-bright: #f8faf0;
+  --md-surface: #ffffff;
+  --md-surface-dim: #dadce0;
+  --md-surface-bright: #ffffff;
   --md-surface-container-lowest: #ffffff;
-  --md-surface-container-low: #f2f5ea;
-  --md-surface-container: #ecefe4;
-  --md-surface-container-high: #e6e9df;
-  --md-surface-container-highest: #e1e4d9;
-  --md-on-surface: #191d16;
-  --md-on-surface-variant: #43483e;
-  --md-outline: #73796d;
-  --md-outline-variant: #c3c8bb;
-  --md-inverse-surface: #2e322b;
-  --md-inverse-on-surface: #eff2e7;
-  --md-inverse-primary: #9dd67d;
+  --md-surface-container-low: #f5f6f8;
+  --md-surface-container: #f3f4f6;
+  --md-surface-container-high: #eceef1;
+  --md-surface-container-highest: #e5e7eb;
+  --md-on-surface: #000000;
+  --md-on-surface-variant: #2e3238;
+  --md-outline: #6b7079;
+  --md-outline-variant: #eceef1;
+  --md-inverse-surface: #2f3033;
+  --md-inverse-on-surface: #f1f2f4;
+  --md-inverse-primary: #8fd394;
   --md-scrim: #000000;
   --md-shadow: #000000;
 
   /* RGB triplets for state layers: rgb(var(--x-rgb) / 0.08) */
-  --md-primary-rgb: 56 106 32;
-  --md-on-surface-rgb: 25 29 22;
-  --md-on-surface-variant-rgb: 67 72 62;
+  --md-primary-rgb: 46 125 50;
+  --md-on-surface-rgb: 0 0 0;
+  --md-on-surface-variant-rgb: 46 50 56;
   --md-on-primary-rgb: 255 255 255;
-  --md-on-secondary-container-rgb: 19 31 13;
+  --md-on-secondary-container-rgb: 27 77 32;
   --md-error-rgb: 186 26 26;
 
   /* ---- State layer opacities ---- */
