@@ -1169,6 +1169,36 @@
   background: var(--pos-blue-dark);
 }
 
+/* Payment method toggles — each one independent, matched with OR. Active
+   styling mirrors .worker-chip.active so it inverts correctly in dark mode. */
+.riwayat-payment-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.riwayat-payment-toggle {
+  padding: 7px 14px;
+  border: 1px solid rgba(var(--pos-ink), 0.15);
+  border-radius: 999px;
+  background: var(--pos-surface);
+  color: var(--pos-text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.riwayat-payment-toggle:hover {
+  border-color: rgba(var(--pos-ink), 0.35);
+}
+
+.riwayat-payment-toggle.active {
+  background: var(--pos-text);
+  border-color: var(--pos-text);
+  color: var(--pos-surface);
+}
+
 .riwayat-export {
   display: flex;
   align-items: center;

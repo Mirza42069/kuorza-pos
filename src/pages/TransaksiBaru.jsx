@@ -1,11 +1,12 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getActiveServices, getAvailableShelfItems, getActiveProfiles, createTreatment } from '../api'
+import { getActiveServices, getAvailableShelfItems, getActiveProfiles, createTreatment, checkoutTreatment } from '../api'
 import { ServicePicker } from '../components/ServicePicker'
 import { ShelfItemPicker } from '../components/ShelfItemPicker'
 import { StaffPicker } from '../components/StaffPicker'
 import { MultiStaffPicker } from '../components/MultiStaffPicker'
 import { MissingFieldsModal } from '../components/MissingFieldsModal'
+import { PaymentModal } from '../components/PaymentModal'
 import { formatRupiah } from '../lib/format'
 import { getServicePrice, hasPromo, PRICE_MODES } from '../lib/servicePrice'
 import { PriceModeToggle } from '../components/PriceModeToggle'
@@ -339,6 +340,9 @@ export default function TransaksiBaru() {
   const [showInvalid, setShowInvalid] = useState(false)
   // The issues listed in the popup, or null when it's closed.
   const [missingPopup, setMissingPopup] = useState(null)
+  // Checkout payment popup for an item-only sale (see itemOnly).
+  const [paymentOpen, setPaymentOpen] = useState(false)
+  const [paymentError, setPaymentError] = useState('')
   const wizardRef = useRef(null)
   const deskRef = useRef(null)
 
@@ -455,6 +459,9 @@ export default function TransaksiBaru() {
   // ticket only asks for plate and brand once something vehicle-related is on
   // it — a Cuci Helm ticket never does.
   const needsVehicle = selectedItems.some((item) => item.requiresVehicle)
+  // Nothing but shelf goods: no wash, so no queue and no wash/QC crew — it's
+  // paid at checkout and closed straight away.
+  const itemOnly = selectedItems.length > 0 && selectedItems.every((item) => item.shelfItemId != null)
   const vehicleSlots = useMemo(() => buildVehicleSlots(selectedItems), [selectedItems])
   const currentPlates = vehicleSlots.map((slot) => (plateNumbers[slot.key] ?? '').trim())
 
@@ -598,6 +605,12 @@ export default function TransaksiBaru() {
     //   return
     // }
 
+    if (itemOnly) {
+      setPaymentError('')
+      setPaymentOpen(true)
+      return
+    }
+
     setSubmitting(true)
     try {
       // No paymentMethod — a new ticket is always queued unpaid and settled
@@ -624,6 +637,39 @@ export default function TransaksiBaru() {
       // that message names the actual problem — don't bury it.
       setError(err.message?.includes('Stok') ? err.message : 'Gagal menyimpan transaksi, coba lagi')
       scrollToTop()
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // Item-only checkout: record payment (+ proof), close, show the receipt.
+  async function handleCheckout({ paymentMethod, proofFile }) {
+    setPaymentError('')
+    setSubmitting(true)
+    try {
+      const treatment = await checkoutTreatment(
+        {
+          customerName: customerName.trim(),
+          customerPhone: customerPhone.trim(),
+          plateNumber: null,
+          treatmentType: null,
+          pic: profile.full_name,
+          notes: notes.trim() || null,
+          items: selectedItems,
+          discount: 0,
+        },
+        { paymentMethod, proofFile }
+      )
+      navigate(`/struk/${treatment.id}`)
+    } catch (err) {
+      // The sale went through but its proof photo or close didn't — it now
+      // sits in the queue as paid-but-open, so send staff to that ticket to
+      // finish it rather than letting them submit (and sell) it a second time.
+      if (err.treatmentId) {
+        navigate(`/treatment/${err.treatmentId}`)
+        return
+      }
+      setPaymentError(err.message?.includes('Stok') ? err.message : 'Gagal menyimpan transaksi, coba lagi')
     } finally {
       setSubmitting(false)
     }
@@ -668,8 +714,19 @@ export default function TransaksiBaru() {
   //   />
   // )
 
-  const missingFieldsModal = missingPopup && (
-    <MissingFieldsModal issues={missingPopup} onClose={closeMissingPopup} />
+  const missingFieldsModal = (
+    <>
+      {missingPopup && <MissingFieldsModal issues={missingPopup} onClose={closeMissingPopup} />}
+      {paymentOpen && (
+        <PaymentModal
+          total={total}
+          busy={submitting}
+          error={paymentError}
+          onConfirm={handleCheckout}
+          onCancel={() => setPaymentOpen(false)}
+        />
+      )}
+    </>
   )
 
   // ---- Worker flow: three pages, confirmed before it is queued ----
@@ -760,10 +817,12 @@ export default function TransaksiBaru() {
 
             <div className="worker-wizard-card">{customerFields}</div>
 
-            <div className="worker-wizard-card">
-              <div className="worker-wizard-card-title">{t('Petugas')}</div>
-              {staffFields}
-            </div>
+            {!itemOnly && (
+              <div className="worker-wizard-card">
+                <div className="worker-wizard-card-title">{t('Petugas')}</div>
+                {staffFields}
+              </div>
+            )}
           </section>
         )}
 
@@ -772,7 +831,9 @@ export default function TransaksiBaru() {
             <header className="worker-wizard-head">
               <h2 className="worker-wizard-title">{t('Konfirmasi')}</h2>
               <p className="worker-wizard-subtitle">
-                {t('Periksa detail tiket sebelum disimpan ke antrian.')}
+                {itemOnly
+                  ? t('Periksa detail sebelum pembayaran.')
+                  : t('Periksa detail tiket sebelum disimpan ke antrian.')}
               </p>
             </header>
 
@@ -810,14 +871,18 @@ export default function TransaksiBaru() {
                     })}
                   </>
                 )}
-                <div className="worker-wizard-review-row">
-                  <dt>{t('Petugas Cuci')}</dt>
-                  <dd>{washStaff.length ? washStaff.join(', ') : '—'}</dd>
-                </div>
-                <div className="worker-wizard-review-row">
-                  <dt>{t('Petugas QC')}</dt>
-                  <dd>{qcStaff || '—'}</dd>
-                </div>
+                {!itemOnly && (
+                  <>
+                    <div className="worker-wizard-review-row">
+                      <dt>{t('Petugas Cuci')}</dt>
+                      <dd>{washStaff.length ? washStaff.join(', ') : '—'}</dd>
+                    </div>
+                    <div className="worker-wizard-review-row">
+                      <dt>{t('Petugas QC')}</dt>
+                      <dd>{qcStaff || '—'}</dd>
+                    </div>
+                  </>
+                )}
               </dl>
             </div>
 
@@ -876,7 +941,9 @@ export default function TransaksiBaru() {
               {step === WIZARD_STEPS.length
                 ? submitting
                   ? t('Menyimpan...')
-                  : t('Simpan')
+                  : itemOnly
+                    ? t('Bayar Sekarang')
+                    : t('Simpan')
                 : t('Lanjut')}
             </button>
           </div>
@@ -915,7 +982,7 @@ export default function TransaksiBaru() {
 
         {customerFields}
 
-        {staffFields}
+        {!itemOnly && staffFields}
 
         <TicketLines
           items={selectedItems}
@@ -934,7 +1001,7 @@ export default function TransaksiBaru() {
         {error && <p className="form-error">{t(error)}</p>}
 
         <button type="submit" className="ticket-submit" disabled={submitting}>
-          {submitting ? t('Menyimpan...') : t('Simpan ke Antrian')}
+          {submitting ? t('Menyimpan...') : itemOnly ? t('Bayar & Selesai') : t('Simpan ke Antrian')}
         </button>
       </aside>
     </form>

@@ -96,7 +96,7 @@ export function formatPeriodLabel(period) {
 
   if (period === 'daily') {
     const hours = `${String(BUSINESS_DAY_START_HOUR).padStart(2, '0')}.00–${String(BUSINESS_DAY_END_HOUR).padStart(2, '0')}.00`
-    return `${t('Harian')} - ${start.toLocaleDateString(dateLocale(), { day: 'numeric', month: 'long', year: 'numeric' })} (${hours})`
+    return `${t('Harian')} - ${start.toLocaleDateString(dateLocale(), { day: 'numeric', month: 'long', year: 'numeric' })} `
   }
 
   if (period === 'weekly') {

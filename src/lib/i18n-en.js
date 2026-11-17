@@ -210,6 +210,11 @@ export const en = {
   "Tiket Saat Ini": "Current Ticket",
   "Belum ada item — pilih layanan atau barang di sebelah kiri": "No items yet — choose services or items on the left",
   "Simpan ke Antrian": "Save to Queue",
+  "Bayar Sekarang": "Pay Now",
+  "Bayar & Selesai": "Pay & Finish",
+  "Periksa detail sebelum pembayaran.": "Check the details before payment.",
+  "Pembayaran tercatat, tapi foto bukti gagal diunggah — ulangi dari antrian": "Payment recorded, but the proof photo failed to upload — retry from the queue",
+  "Pembayaran tercatat, tapi transaksi gagal ditutup — tutup dari antrian": "Payment recorded, but the transaction failed to close — close it from the queue",
 
   // ---- Katalog ----
   "Katalog": "Catalog",

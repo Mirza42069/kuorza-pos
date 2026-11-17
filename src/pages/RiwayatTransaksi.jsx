@@ -15,8 +15,9 @@ const PERIOD_OPTIONS = [
   { value: 'yearly', label: 'Tahunan' },
 ]
 
+// Toggle buttons, not a single-choice list: any number can be on at once and
+// a row shows if it matches any of them. None on means no filter at all.
 const PAYMENT_FILTER_OPTIONS = [
-  { value: 'all', label: 'Semua Pembayaran' },
   { value: 'cash', label: 'Tunai' },
   { value: 'qris', label: 'QRIS' },
   { value: 'transfer', label: 'Transfer' },
@@ -131,7 +132,11 @@ export default function RiwayatTransaksi() {
   const [period, setPeriod] = useState('daily')
   const [exporting, setExporting] = useState(null)
   const [expandedId, setExpandedId] = useState(null)
-  const [paymentFilter, setPaymentFilter] = useState('all')
+  const [paymentFilters, setPaymentFilters] = useState([])
+
+  function togglePaymentFilter(value) {
+    setPaymentFilters((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]))
+  }
   // Same arrangement as Laporan's leaderboard: the period picker is admin-only,
   // so staff stay pinned to today's rows no matter what's in state.
   const effectivePeriod = isAdmin ? period : 'daily'
@@ -200,11 +205,15 @@ export default function RiwayatTransaksi() {
   // The payment filter is applied client-side on the rows already loaded, so
   // it composes with both the period picker and the search. A ticket
   // matches a method if any of its payments used it; 'unpaid' has none.
+  // Several toggles on combine with OR.
   const visibleTreatments = useMemo(() => {
-    if (paymentFilter === 'all') return treatments
-    if (paymentFilter === 'unpaid') return treatments.filter((t) => !t.isPaid)
-    return treatments.filter((t) => t.payments.some((p) => p.payment_method === paymentFilter))
-  }, [treatments, paymentFilter])
+    if (paymentFilters.length === 0) return treatments
+    return treatments.filter((row) =>
+      paymentFilters.some((f) =>
+        f === 'unpaid' ? !row.isPaid : row.payments.some((p) => p.payment_method === f),
+      ),
+    )
+  }, [treatments, paymentFilters])
 
   const stats = useMemo(() => {
     // Revenue reflects money actually collected — treatments can now sit in
@@ -230,19 +239,32 @@ export default function RiwayatTransaksi() {
             placeholder="Cari plat, kode, nama, merek... (staff:budi merek:cbr)"
             title="Filter: staff:, merek:, plat:, kode:, nama:, cuci:, qc:, pic: — pakai tanda kutip untuk spasi, mis. nama:&quot;budi santoso&quot;"
           />
-          <select
-            value={paymentFilter}
-            onChange={(e) => setPaymentFilter(e.target.value)}
-            aria-label={t('Filter metode pembayaran')}
-          >
-            {PAYMENT_FILTER_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {t(opt.label)}
-              </option>
-            ))}
-          </select>
           <button type="submit">{t('Cari')}</button>
         </form>
+      </div>
+      <div className="riwayat-payment-filters" role="group" aria-label={t('Filter metode pembayaran')}>
+        <button
+          type="button"
+          className={`riwayat-payment-toggle ${paymentFilters.length === 0 ? 'active' : ''}`}
+          aria-pressed={paymentFilters.length === 0}
+          onClick={() => setPaymentFilters([])}
+        >
+          {t('Semua Pembayaran')}
+        </button>
+        {PAYMENT_FILTER_OPTIONS.map((opt) => {
+          const on = paymentFilters.includes(opt.value)
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              className={`riwayat-payment-toggle ${on ? 'active' : ''}`}
+              aria-pressed={on}
+              onClick={() => togglePaymentFilter(opt.value)}
+            >
+              {t(opt.label)}
+            </button>
+          )
+        })}
       </div>
       {!isAdmin && (
         <p className="riwayat-scope-note">{t('Pencarian dan riwayat hanya menampilkan transaksi hari ini.')}</p>

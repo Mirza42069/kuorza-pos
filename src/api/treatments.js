@@ -148,6 +148,36 @@ export async function createTreatment({
   return paidTreatment
 }
 
+// Over-the-counter sale: a ticket with only shelf items has no work to queue,
+// so it's paid and closed in one go at checkout. Order matters — payment row
+// first (createTreatment sets 'paid'), then the QRIS/transfer proof photo onto
+// it, then close (the verified-payment trigger checks that proof). If the
+// photo upload fails, the ticket is left 'paid' in the queue, where "Foto
+// Bukti Bayar" retries it like any other unverified payment.
+export async function checkoutTreatment(fields, { paymentMethod, proofFile }) {
+  if (paymentNeedsProof(paymentMethod) && !proofFile) {
+    throw new Error('Foto bukti pembayaran wajib untuk QRIS/transfer')
+  }
+  const treatment = await createTreatment({ ...fields, paymentMethod })
+  if (proofFile) {
+    try {
+      await uploadPaymentProofPhoto(treatment.id, proofFile)
+    } catch {
+      const error = new Error('Pembayaran tercatat, tapi foto bukti gagal diunggah — ulangi dari antrian')
+      error.treatmentId = treatment.id
+      throw error
+    }
+  }
+  try {
+    await closeTreatment(treatment.id)
+  } catch {
+    const error = new Error('Pembayaran tercatat, tapi transaksi gagal ditutup — tutup dari antrian')
+    error.treatmentId = treatment.id
+    throw error
+  }
+  return treatment
+}
+
 // Settle payment on a treatment that was queued without paying up front.
 // If work hasn't started yet (still 'created'), this also advances status to
 // 'paid'. If work is further along (e.g. 'diproses' or 'selesai'), the status is
