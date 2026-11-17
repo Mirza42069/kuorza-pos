@@ -236,3 +236,16 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* Hide the browser's up/down spinner on every number input. Amounts are
+   typed, and the arrows made it easy to nudge a price or stock by 1. */
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

@@ -23,3 +23,15 @@ export async function setServicePromoPrice(serviceId, promoPrice) {
   })
   if (error) throw new Error(error.message || 'Gagal mengubah harga promo')
 }
+
+// Supervisor-only. Sets the normal price and the promo price together, so the
+// RPC can check "promo below normal" against the new normal price. Pass null
+// as promoPrice to end a promo.
+export async function setServicePrices(serviceId, price, promoPrice) {
+  const { error } = await supabase.rpc('set_service_prices', {
+    p_service_id: serviceId,
+    p_price: price,
+    p_promo_price: promoPrice,
+  })
+  if (error) throw new Error(error.message || 'Gagal mengubah harga layanan')
+}

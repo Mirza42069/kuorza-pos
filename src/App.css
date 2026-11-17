@@ -1684,7 +1684,7 @@
 }
 
 .katalog-table.katalog-service-managed .riwayat-table-row {
-  grid-template-columns: 2fr 1fr 1fr 1.4fr;
+  grid-template-columns: 2fr 1fr 1fr auto;
 }
 
 /* Transaksi Baru: one collapsible section per service category. Headers are
@@ -1914,9 +1914,17 @@ body.service-menu-open .worker-content {
   margin: 0;
 }
 
-/* Promo prices run to 7 digits (1050000); the stock input's 68px clips them */
-.katalog-promo-actions input {
-  width: 104px;
+/* Katalog Layanan (supervisor): an input in each price column. Prices run
+   to 7 digits (1050000), so give them room. */
+.katalog-price-input input {
+  width: 100%;
+  max-width: 120px;
+  padding: 6px 8px;
+  font-size: 12.5px;
+  border: 1px solid var(--pos-border);
+  border-radius: 6px;
+  background: var(--pos-surface);
+  color: var(--pos-text);
 }
 
 /* Room for the qty badge, which sits 8px outside each card's corner */

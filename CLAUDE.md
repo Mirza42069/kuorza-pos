@@ -158,6 +158,9 @@ The menu of available wash/detailing services.
   Katalog via the `set_service_promo_price(p_service_id, p_promo_price)` RPC,
   which only touches this column and refuses a promo that is <= 0 or not
   below `price`; null ends the promo
+  Katalog now edits `price` and `promo_price` together through
+  `set_service_prices(p_service_id, p_price, p_promo_price)` (migration 017),
+  same checks plus `price > 0`; the older RPC is no longer called from the UI
 - sort_order integer — menu order (1xx Motor, 2xx Mobil, 3xx Helm, sizes
   ascending within each). One row per size, named e.g. "Motor Basic Wash - S"
 
@@ -511,3 +514,6 @@ All SQL migrations have been run against the Supabase project in order:
   `supabase_realtime` publication so the Antrian queue updates live across
   signed-in users (`subscribeToQueueChanges()` in `src/api/treatments.js`).
   Realtime enforces each table's SELECT RLS (authenticated-only)
+- 017_service_price_editing — `set_service_prices()` RPC (SECURITY DEFINER,
+  `is_supervisor()`-gated, EXECUTE revoked from anon) so supervisors set a
+  service's normal and promo price together in Katalog

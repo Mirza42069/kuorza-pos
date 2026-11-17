@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   getActiveServices,
-  setServicePromoPrice,
+  setServicePrices,
   getShelfItems,
   createShelfItem,
   addShelfStock,
@@ -69,24 +69,21 @@ export default function Katalog() {
   )
 }
 
-// Layanan: names and normal prices are managed in the Supabase dashboard.
-// The promo price changes from time to time, so supervisors set it here.
-// Same collapsible sections as the Transaksi Baru picker: one category open
-// at a time, the first one open to start.
+// Layanan: names are managed in the Supabase dashboard. Supervisors set the
+// normal and promo prices here. Same collapsible sections as the Transaksi
+// Baru picker: one category open at a time, all closed to start.
 function ServiceSection({ services, canManagePromo, onChanged, onError }) {
   const { t } = useLanguage()
   const groups = groupServicesByCategory(services)
-  // undefined = untouched, so the first category starts open;
-  // null = the user closed everything.
-  const [openKey, setOpenKey] = useState(undefined)
-  const currentKey = openKey === undefined ? groups[0]?.key : openKey
+  // null = everything closed, which is how the page opens.
+  const [currentKey, setOpenKey] = useState(null)
 
   return (
     <section className="katalog-section">
       <h2 className="transaksi-section-label">{t('Layanan')}</h2>
       <p className="katalog-note">
         {canManagePromo
-          ? t('Harga promo bisa diubah di sini. Kosongkan lalu simpan untuk mengakhiri promo. Nama dan harga normal dikelola lewat dashboard Supabase.')
+          ? t('Harga normal dan harga promo bisa diubah di sini. Kosongkan harga promo lalu simpan untuk mengakhiri promo. Nama layanan dikelola lewat dashboard Supabase.')
           : t('Untuk menambah atau mengubah layanan, hubungi admin — dikelola lewat dashboard Supabase.')}
       </p>
       {services.length === 0 ? (
@@ -125,23 +122,26 @@ function ServiceSection({ services, canManagePromo, onChanged, onError }) {
                       <span>{t('Harga Promo')}</span>
                       {canManagePromo && <span></span>}
                     </div>
-                    {group.services.map((service) => (
-                      <div key={service.id} className="riwayat-table-row">
-                        <span className="riwayat-plate katalog-service-name">
-                          <ServiceIcon name={service.name} />
-                          {service.name}
-                        </span>
-                        <span className={hasPromo(service) ? 'katalog-normal-price-struck' : 'riwayat-total'}>
-                          {formatRupiah(service.price)}
-                        </span>
-                        <span className="riwayat-total">
-                          {hasPromo(service) ? formatRupiah(getServicePrice(service)) : '—'}
-                        </span>
-                        {canManagePromo && (
-                          <PromoPriceEditor service={service} onChanged={onChanged} onError={onError} />
-                        )}
-                      </div>
-                    ))}
+                    {group.services.map((service) =>
+                      canManagePromo ? (
+                        <ServicePriceEditor
+                          key={`${service.id}-${service.price}-${service.promo_price}`}
+                          service={service}
+                          onChanged={onChanged}
+                          onError={onError}
+                        />
+                      ) : (
+                        <div key={service.id} className="riwayat-table-row">
+                          <ServiceNameCell service={service} />
+                          <span className={hasPromo(service) ? 'katalog-normal-price-struck' : 'riwayat-total'}>
+                            {formatRupiah(service.price)}
+                          </span>
+                          <span className="riwayat-total">
+                            {hasPromo(service) ? formatRupiah(getServicePrice(service)) : '—'}
+                          </span>
+                        </div>
+                      )
+                    )}
                   </div>
                 )}
               </div>
@@ -153,52 +153,88 @@ function ServiceSection({ services, canManagePromo, onChanged, onError }) {
   )
 }
 
-// The RPC re-checks everything below (supervisor, > 0, < normal price); the
-// client-side checks are just for a friendlier message.
-function PromoPriceEditor({ service, onChanged, onError }) {
+function ServiceNameCell({ service }) {
+  return (
+    <span className="riwayat-plate katalog-service-name">
+      <ServiceIcon name={service.name} />
+      {service.name}
+    </span>
+  )
+}
+
+// One row with an input in each price column and a single Simpan. The RPC
+// re-checks everything below (supervisor, > 0, promo < normal); the
+// client-side checks are just for a friendlier message. The row is keyed on
+// both prices, so after a save it remounts with the stored values.
+function ServicePriceEditor({ service, onChanged, onError }) {
   const { t } = useLanguage()
-  const [value, setValue] = useState(service.promo_price != null ? String(Number(service.promo_price)) : '')
+  const [priceValue, setPriceValue] = useState(String(Number(service.price)))
+  const [promoValue, setPromoValue] = useState(
+    service.promo_price != null ? String(Number(service.promo_price)) : ''
+  )
   const [busy, setBusy] = useState(false)
 
   async function handleSave() {
-    const trimmed = value.trim()
-    const promo = trimmed === '' ? null : Math.round(Number(trimmed))
+    const price = Math.round(Number(priceValue.trim()))
+    if (priceValue.trim() === '' || !Number.isFinite(price) || price <= 0) {
+      onError('Harga normal harus angka lebih dari nol')
+      return
+    }
+    const promoTrimmed = promoValue.trim()
+    const promo = promoTrimmed === '' ? null : Math.round(Number(promoTrimmed))
     if (promo !== null && (!Number.isFinite(promo) || promo <= 0)) {
       onError('Harga promo harus angka lebih dari nol')
       return
     }
-    if (promo !== null && promo >= Number(service.price)) {
+    if (promo !== null && promo >= price) {
       onError('Harga promo harus lebih kecil dari harga normal')
       return
     }
     setBusy(true)
     onError('')
     try {
-      await setServicePromoPrice(service.id, promo)
+      await setServicePrices(service.id, price, promo)
       onChanged()
     } catch (err) {
-      onError(err.message || 'Gagal mengubah harga promo')
+      onError(err.message || 'Gagal mengubah harga layanan')
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <span className="katalog-stock-actions katalog-promo-actions">
-      <input
-        type="number"
-        min="0"
-        inputMode="numeric"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder={t('Promo')}
-        aria-label={t('Harga promo {name}', { name: service.name })}
-        disabled={busy}
-      />
-      <button type="button" className="btn-secondary" onClick={handleSave} disabled={busy}>
-        {t('Simpan')}
-      </button>
-    </span>
+    <div className="riwayat-table-row">
+      <ServiceNameCell service={service} />
+      <span className="katalog-price-input">
+        <input
+          type="number"
+          min="0"
+          inputMode="numeric"
+          value={priceValue}
+          onChange={(e) => setPriceValue(e.target.value)}
+          placeholder={t('Normal')}
+          aria-label={t('Harga normal {name}', { name: service.name })}
+          disabled={busy}
+        />
+      </span>
+      <span className="katalog-price-input">
+        <input
+          type="number"
+          min="0"
+          inputMode="numeric"
+          value={promoValue}
+          onChange={(e) => setPromoValue(e.target.value)}
+          placeholder={t('Promo')}
+          aria-label={t('Harga promo {name}', { name: service.name })}
+          disabled={busy}
+        />
+      </span>
+      <span className="katalog-stock-actions">
+        <button type="button" className="btn-secondary" onClick={handleSave} disabled={busy}>
+          {t('Simpan')}
+        </button>
+      </span>
+    </div>
   )
 }
 
