@@ -211,7 +211,7 @@ export default function RiwayatTransaksi() {
     // the queue unpaid, so only paid ones count toward it.
     const paid = visibleTreatments.filter((t) => t.status !== 'voided' && t.isPaid)
     const revenue = paid.reduce((sum, t) => sum + Number(t.total || 0), 0)
-    const avg = paid.length ? revenue / paid.length : 0
+    const avg = paid.length ? Math.round(revenue / paid.length) : 0
     return {
       count: visibleTreatments.length,
       revenue,

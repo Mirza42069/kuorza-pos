@@ -17,7 +17,7 @@ const NAV_ITEMS = [
   { to: '/transaksi-baru', label: 'Transaksi Baru', end: false, access: 'all' },
   { to: '/katalog', label: 'Katalog Layanan', end: false, access: 'supervisor' },
   { to: '/riwayat', label: 'Riwayat Transaksi', end: false, access: 'supervisor' },
-  { to: '/laporan', label: 'Laporan', end: false, access: 'supervisor' },
+  { to: '/laporan', label: 'Laporan Harian', end: false, access: 'supervisor' },
   { to: '/upah', label: 'Kelola Upah', end: false, access: 'supervisor' },
   { to: '/staf', label: 'Kelola Staf', end: false, access: 'admin' },
 ]

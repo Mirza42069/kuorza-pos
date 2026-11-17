@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { formatStaffNames, parseStaffNames } from '../lib/staffNames'
+import { getBusinessDayRange } from '../lib/dateRange'
 import { uploadPaymentProofPhoto } from './photos'
 
 // Payment verification: a ticket can only be closed once its payment is
@@ -336,13 +337,13 @@ function mapTreatmentRow(t) {
 }
 
 export async function getTodayTreatments() {
-  const startOfDay = new Date()
-  startOfDay.setHours(0, 0, 0, 0)
+  const { start, end } = getBusinessDayRange()
 
   const { data, error } = await supabase
     .from('treatments')
     .select(LIST_SELECT)
-    .gte('created_at', startOfDay.toISOString())
+    .gte('created_at', start.toISOString())
+    .lt('created_at', end.toISOString())
     .order('created_at', { ascending: false })
   if (error) throw error
   return data.map(mapTreatmentRow)
@@ -402,27 +403,32 @@ export function subscribeToQueueChanges(onChange) {
 // Revenue is money actually collected, so this reads from payments
 // (by paid_at) rather than treatment totals — a queued-but-unpaid treatment
 // shouldn't show up as revenue.
+// Days here are business days (04:00–04:00, see src/lib/dateRange.js): the
+// current shift plus the six before it.
 export async function getLast7DaysRevenue() {
-  const start = new Date()
+  const { start: todayStart, end } = getBusinessDayRange()
+  const start = new Date(todayStart)
   start.setDate(start.getDate() - 6)
-  start.setHours(0, 0, 0, 0)
 
   const { data, error } = await supabase
     .from('payments')
     .select('paid_at, amount')
     .gte('paid_at', start.toISOString())
+    .lt('paid_at', end.toISOString())
   if (error) throw error
   return data
 }
 
+// Payments collected during the current business day (shift 07:00–04:00,
+// plus the closed hours before it).
 export async function getTodayPaymentBreakdown() {
-  const startOfDay = new Date()
-  startOfDay.setHours(0, 0, 0, 0)
+  const { start, end } = getBusinessDayRange()
 
   const { data, error } = await supabase
     .from('payments')
     .select('payment_method, amount, paid_at')
-    .gte('paid_at', startOfDay.toISOString())
+    .gte('paid_at', start.toISOString())
+    .lt('paid_at', end.toISOString())
   if (error) throw error
   return data
 }
@@ -489,9 +495,9 @@ export async function searchTreatments(query, { todayOnly = false } = {}) {
   }
 
   if (todayOnly) {
-    const startOfDay = new Date()
-    startOfDay.setHours(0, 0, 0, 0)
-    request = request.gte('created_at', startOfDay.toISOString())
+    // Today = the current business day (shift), not the calendar day.
+    const { start, end } = getBusinessDayRange()
+    request = request.gte('created_at', start.toISOString()).lt('created_at', end.toISOString())
   }
 
   const { data, error } = await request

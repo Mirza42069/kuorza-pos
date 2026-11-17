@@ -6,7 +6,11 @@ import {
   getPopularServices,
 } from '../api'
 import { formatRupiah, initials } from '../lib/format'
-import { getPeriodRange, formatPeriodLabel } from '../lib/dateRange'
+import {
+  getPeriodRange,
+  formatPeriodLabel,
+  businessDayStart,
+} from '../lib/dateRange'
 import { useAuth } from '../context/useAuth'
 import { isAdmin as checkIsAdmin } from '../lib/roles'
 import { useLanguage } from '../context/useLanguage'
@@ -99,20 +103,20 @@ export default function Laporan() {
   }, [payments])
 
   const revBars = useMemo(() => {
+    // Each bar is a business day (04:00–04:00), labelled by the day it opened.
     const days = []
     for (let i = 6; i >= 0; i--) {
-      const d = new Date()
+      const d = businessDayStart()
       d.setDate(d.getDate() - i)
       days.push({ date: d, key: d.toDateString(), label: dayLabel(d), revenue: 0 })
     }
     const byDay = new Map(days.map((d) => [d.key, d]))
     for (const p of last7) {
-      const key = new Date(p.paid_at).toDateString()
-      const bucket = byDay.get(key)
+      const bucket = byDay.get(businessDayStart(new Date(p.paid_at)).toDateString())
       if (bucket) bucket.revenue += Number(p.amount || 0)
     }
     const max = Math.max(1, ...days.map((d) => d.revenue))
-    const todayKey = new Date().toDateString()
+    const todayKey = businessDayStart().toDateString()
     return days.map((d) => ({
       ...d,
       heightPct: Math.round((d.revenue / max) * 100),
